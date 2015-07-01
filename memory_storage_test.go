@@ -7,8 +7,6 @@ import (
 	"reflect"
 
 	"sort"
-
-	"github.com/achilleasa/usrv/middleware"
 )
 
 func TestMemoryStorage(t *testing.T) {
@@ -19,15 +17,15 @@ func TestMemoryStorage(t *testing.T) {
 	traceId := "abcd-1234-1234-1234"
 
 	// Shuffled records to simulate appends by different processes
-	dataSet := middleware.Trace{
-		middleware.TraceEntry{Type: middleware.Response, From: "com.service3", To: "com.service2", Timestamp: now.Add(time.Second * 3), TraceId: traceId},
-		middleware.TraceEntry{Type: middleware.Request, From: "com.service2", To: "com.service3", Timestamp: now.Add(time.Second * 2), TraceId: traceId},
-		middleware.TraceEntry{Type: middleware.Response, From: "com.service2", To: "com.service1", Timestamp: now.Add(time.Second * 4), TraceId: traceId},
-		middleware.TraceEntry{Type: middleware.Request, From: "com.service1", To: "com.service2", Timestamp: now.Add(time.Second * 1), TraceId: traceId},
+	dataSet := Trace{
+		TraceEntry{Type: Response, From: "com.service3", To: "com.service2", Timestamp: now.Add(time.Second * 3), TraceId: traceId},
+		TraceEntry{Type: Request, From: "com.service2", To: "com.service3", Timestamp: now.Add(time.Second * 2), TraceId: traceId},
+		TraceEntry{Type: Response, From: "com.service2", To: "com.service1", Timestamp: now.Add(time.Second * 4), TraceId: traceId},
+		TraceEntry{Type: Request, From: "com.service1", To: "com.service2", Timestamp: now.Add(time.Second * 1), TraceId: traceId},
 	}
 
 	// Generate the final sorted set that we will use for comparisons
-	sortedDataSet := make(middleware.Trace, len(dataSet))
+	sortedDataSet := make(Trace, len(dataSet))
 	copy(sortedDataSet, dataSet)
 	sort.Sort(sortedDataSet)
 

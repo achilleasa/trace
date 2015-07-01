@@ -8,7 +8,6 @@ import (
 
 	"sort"
 
-	"github.com/achilleasa/usrv/middleware"
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -54,7 +53,7 @@ func NewRedisStorage(redisEndpoint string, password string, db uint, timeout tim
 
 // Store a trace entry and set a TTL on it. If the ttl is 0 then the
 // trace record will never expire. Implements the Storage interface.
-func (r *Redis) Store(logEntry *middleware.TraceEntry, ttl time.Duration) error {
+func (r *Redis) Store(logEntry *TraceEntry, ttl time.Duration) error {
 	json, err := json.Marshal(logEntry)
 	if err != nil {
 		return err
@@ -78,7 +77,7 @@ func (r *Redis) Store(logEntry *middleware.TraceEntry, ttl time.Duration) error 
 
 	// If this is an outgoing request, add the destination to the dependency set
 	// for the origin
-	if logEntry.Type == middleware.Request {
+	if logEntry.Type == Request {
 		conn.Send("SADD", fmt.Sprintf("trace.%s.deps", logEntry.From), logEntry.To)
 	}
 
@@ -88,7 +87,7 @@ func (r *Redis) Store(logEntry *middleware.TraceEntry, ttl time.Duration) error 
 }
 
 // Fetch a set of time-ordered trace entries with the given trace-id.
-func (r *Redis) GetTrace(traceId string) (middleware.Trace, error) {
+func (r *Redis) GetTrace(traceId string) (Trace, error) {
 
 	conn := r.connPool.Get()
 	defer conn.Close()
@@ -107,9 +106,9 @@ func (r *Redis) GetTrace(traceId string) (middleware.Trace, error) {
 	}
 
 	// Unmarshal raw data
-	trace := make(middleware.Trace, len)
+	trace := make(Trace, len)
 	for index, rawRow := range rawRows {
-		entry := middleware.TraceEntry{}
+		entry := TraceEntry{}
 		err = json.Unmarshal([]byte(rawRow), &entry)
 		if err != nil {
 			return nil, err

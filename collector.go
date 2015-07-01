@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"sync"
-
-	"github.com/achilleasa/usrv/middleware"
 )
 
 type Collector struct {
@@ -13,7 +11,7 @@ type Collector struct {
 	shutdownChan chan struct{}
 
 	// A buffered channel for processing trace data
-	TraceChan chan middleware.TraceEntry
+	TraceChan chan TraceEntry
 
 	// A storage engine for the processed data
 	storage Storage
@@ -26,7 +24,7 @@ type Collector struct {
 func NewCollector(storage Storage) *Collector {
 	collector := &Collector{
 		shutdownChan: make(chan struct{}, 1),
-		TraceChan:    make(chan middleware.TraceEntry, 1000),
+		TraceChan:    make(chan TraceEntry, 1000),
 		storage:      storage,
 	}
 
@@ -48,7 +46,7 @@ func (c *Collector) start() {
 				if !ok {
 					return
 				}
-				go func(evt *middleware.TraceEntry) {
+				go func(evt *TraceEntry) {
 					c.storage.Store(evt, time.Hour*1)
 				}(&evt)
 			}

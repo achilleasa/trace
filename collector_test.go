@@ -3,8 +3,6 @@ package trace
 import (
 	"testing"
 	"time"
-
-	"github.com/achilleasa/usrv/middleware"
 )
 
 func TestCollector(t *testing.T) {
@@ -19,8 +17,8 @@ func TestCollector(t *testing.T) {
 	// emit trace
 	now := time.Now()
 	traceId := "abcd-1234-1234-1234"
-	collector.TraceChan <- middleware.TraceEntry{
-		Type:      middleware.Response,
+	collector.TraceChan <- TraceEntry{
+		Type:      Response,
 		From:      "com.service3",
 		To:        "com.service2",
 		Timestamp: now,
@@ -50,8 +48,8 @@ func TestCollectorChannelClose(t *testing.T) {
 	// emit trace
 	now := time.Now()
 	traceId := "abcd-1234-1234-1234"
-	collector.TraceChan <- middleware.TraceEntry{
-		Type:      middleware.Response,
+	collector.TraceChan <- TraceEntry{
+		Type:      Response,
 		From:      "com.service3",
 		To:        "com.service2",
 		Timestamp: now,

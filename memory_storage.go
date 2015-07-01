@@ -4,14 +4,12 @@ import (
 	"time"
 
 	"sort"
-
-	"github.com/achilleasa/usrv/middleware"
 )
 
 // This storage backend stores data in memory. It is meant to be used for running tests.
 // The backend does not support TTL on keys.
 type MemoryStorage struct {
-	traces      map[string]middleware.Trace
+	traces      map[string]Trace
 	services    map[string]string
 	serviceDeps map[string]*ServiceDependencies
 
@@ -21,7 +19,7 @@ type MemoryStorage struct {
 
 func NewMemoryStorage() *MemoryStorage {
 	return &MemoryStorage{
-		traces:      make(map[string]middleware.Trace),
+		traces:      make(map[string]Trace),
 		services:    make(map[string]string),
 		serviceDeps: make(map[string]*ServiceDependencies),
 		afterStore:  func() {},
@@ -30,15 +28,15 @@ func NewMemoryStorage() *MemoryStorage {
 
 // Store a trace entry and set a TTL on it. If the ttl is 0 then the
 // trace record will never expire. Implements the Storage interface.
-func (s *MemoryStorage) Store(logEntry *middleware.TraceEntry, ttl time.Duration) error {
+func (s *MemoryStorage) Store(logEntry *TraceEntry, ttl time.Duration) error {
 	_, exists := s.traces[logEntry.TraceId]
 	if !exists {
-		s.traces[logEntry.TraceId] = make(middleware.Trace, 0)
+		s.traces[logEntry.TraceId] = make(Trace, 0)
 	}
 	s.traces[logEntry.TraceId] = append(s.traces[logEntry.TraceId], *logEntry)
 
 	s.services[logEntry.From] = logEntry.From
-	if logEntry.Type == middleware.Request {
+	if logEntry.Type == Request {
 		_, exists = s.serviceDeps[logEntry.From]
 		if !exists {
 			s.serviceDeps[logEntry.From] = &ServiceDependencies{
@@ -84,10 +82,10 @@ func (s *MemoryStorage) GetDependencies(srvFilter ...string) ([]ServiceDependenc
 }
 
 // Fetch a set of time-ordered trace entries with the given trace-id.
-func (s *MemoryStorage) GetTrace(traceId string) (middleware.Trace, error) {
+func (s *MemoryStorage) GetTrace(traceId string) (Trace, error) {
 	trace, exists := s.traces[traceId]
 	if !exists {
-		return make(middleware.Trace, 0), nil
+		return make(Trace, 0), nil
 	}
 
 	sort.Sort(trace)
