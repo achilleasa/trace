@@ -12,10 +12,13 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
+// This storage backend is built on top of Redis. Internally it uses
+// a connection pool to provide thread-safe access.
 type Redis struct {
 	connPool *redis.Pool
 }
 
+// Create a new Redis storage.
 func NewRedisStorage(redisEndpoint string, password string, db uint, timeout time.Duration) *Redis {
 	return &Redis{
 		connPool: &redis.Pool{
@@ -84,7 +87,7 @@ func (r *Redis) Store(logEntry *middleware.TraceEntry, ttl time.Duration) error 
 	return err
 }
 
-// Fetch a set of time-ordered trace entries with the given trace-id
+// Fetch a set of time-ordered trace entries with the given trace-id.
 func (r *Redis) GetTrace(traceId string) (middleware.Trace, error) {
 
 	conn := r.connPool.Get()
