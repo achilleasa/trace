@@ -8,6 +8,8 @@ import (
 
 	"reflect"
 
+	"bytes"
+	"encoding/json"
 	"sort"
 )
 
@@ -55,7 +57,9 @@ func TestMemoryStorage(t *testing.T) {
 		t.Fatalf("Error retrieving trace: %v", err)
 	}
 
-	if !reflect.DeepEqual(sortedDataSet, traceLog) {
+	l, _ := json.Marshal(sortedDataSet)
+	r, _ := json.Marshal(traceLog)
+	if bytes.Compare(l, r) != 0 {
 		t.Fatalf("Expected retrieved trace to be equal to %v; got %v", sortedDataSet, traceLog)
 	}
 
@@ -92,7 +96,9 @@ func TestMemoryStorage(t *testing.T) {
 	if len(depTests) != len(deps) {
 		t.Fatalf("Expected retrieved dependencies to have length %d; got %d", len(depTests), len(deps))
 	}
-	if !reflect.DeepEqual(depTests, deps) {
+	l, _ = json.Marshal(depTests)
+	r, _ = json.Marshal(deps)
+	if bytes.Compare(l, r) != 0 {
 		t.Fatalf("Expected dependency set %v; got %v", depTests, deps)
 	}
 }
