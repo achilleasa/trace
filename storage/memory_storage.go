@@ -16,7 +16,7 @@ type Memory struct {
 	sync.Mutex
 	traces      map[string]trace.Trace
 	services    map[string]string
-	serviceDeps map[string]*trace.ServiceDependencies
+	serviceDeps map[string]*trace.Dependencies
 
 	// A function invoked after a log entry is stored.
 	AfterStore func()
@@ -26,7 +26,7 @@ func NewMemory() *Memory {
 	return &Memory{
 		traces:      make(map[string]trace.Trace),
 		services:    make(map[string]string),
-		serviceDeps: make(map[string]*trace.ServiceDependencies),
+		serviceDeps: make(map[string]*trace.Dependencies),
 		AfterStore:  func() {},
 	}
 }
@@ -47,7 +47,7 @@ func (s *Memory) Store(logEntry *trace.Record, ttl time.Duration) error {
 	if logEntry.Type == trace.Request {
 		_, exists = s.serviceDeps[logEntry.From]
 		if !exists {
-			s.serviceDeps[logEntry.From] = &trace.ServiceDependencies{
+			s.serviceDeps[logEntry.From] = &trace.Dependencies{
 				Service:      logEntry.From,
 				Dependencies: make([]string, 0),
 			}
@@ -61,7 +61,7 @@ func (s *Memory) Store(logEntry *trace.Record, ttl time.Duration) error {
 
 // Get service dependencies optionally filtered by a set of service names. If no filters are
 // specified then the response will include all services currently known to the storage.
-func (s *Memory) GetDependencies(srvFilter ...string) ([]trace.ServiceDependencies, error) {
+func (s *Memory) GetDependencies(srvFilter ...string) ([]trace.Dependencies, error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -76,11 +76,11 @@ func (s *Memory) GetDependencies(srvFilter ...string) ([]trace.ServiceDependenci
 	sort.Strings(srvFilter)
 
 	replyCount := len(srvFilter)
-	serviceDeps := make([]trace.ServiceDependencies, replyCount)
+	serviceDeps := make([]trace.Dependencies, replyCount)
 	for index, srvName := range srvFilter {
 		dep, exists := s.serviceDeps[srvName]
 		if !exists {
-			dep = &trace.ServiceDependencies{
+			dep = &trace.Dependencies{
 				Service:      srvName,
 				Dependencies: make([]string, 0),
 			}

@@ -13,7 +13,7 @@ const (
 )
 
 // The ServiceDependencies describes a service and its dependencies.
-type ServiceDependencies struct {
+type Dependencies struct {
 	Service      string   `json:"service"`
 	Dependencies []string `json:"dependencies"`
 }

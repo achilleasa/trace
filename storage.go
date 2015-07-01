@@ -15,7 +15,7 @@ type Storage interface {
 
 	// Get service dependencies optionally filtered by a set of service names. If no filters are
 	// specified then the response will include all services currently known to the storage.
-	GetDependencies(srvFilter ...string) ([]ServiceDependencies, error)
+	GetDependencies(srvFilter ...string) ([]Dependencies, error)
 
 	// Shutdown the storage.
 	Close() error

@@ -125,7 +125,7 @@ func (r *Redis) GetTrace(traceId string) (trace.Trace, error) {
 
 // Get service dependencies optionally filtered by a set of service names. If no filters are
 // specified then the response will include all services currently known to the storage.
-func (r *Redis) GetDependencies(srvFilter ...string) ([]trace.ServiceDependencies, error) {
+func (r *Redis) GetDependencies(srvFilter ...string) ([]trace.Dependencies, error) {
 	conn := r.connPool.Get()
 	defer conn.Close()
 
@@ -150,10 +150,10 @@ func (r *Redis) GetDependencies(srvFilter ...string) ([]trace.ServiceDependencie
 
 	// Assemble deps
 	replyCount := len(srvFilter)
-	serviceDeps := make([]trace.ServiceDependencies, replyCount)
+	serviceDeps := make([]trace.Dependencies, replyCount)
 	for index := 0; index < replyCount; index++ {
 		deps, _ := redis.Strings(replies[index], nil)
-		serviceDeps[index] = trace.ServiceDependencies{
+		serviceDeps[index] = trace.Dependencies{
 			Service:      srvFilter[index],
 			Dependencies: deps,
 		}

@@ -41,29 +41,29 @@ func TestMemoryStorage(t *testing.T) {
 	}
 
 	// Fetch unknown trace
-	trace, err := storage.GetTrace("foobar")
+	traceLog, err := storage.GetTrace("foobar")
 	if err != nil {
 		t.Fatalf("Error retrieving trace: %v", err)
 	}
-	if len(trace) != 0 {
-		t.Fatalf("Expected empty trace; got trace with %d items: %v", len(trace), trace)
+	if len(traceLog) != 0 {
+		t.Fatalf("Expected empty trace; got trace with %d items: %v", len(traceLog), traceLog)
 	}
 
 	// Fetch trace by id
-	trace, err = storage.GetTrace(traceId)
+	traceLog, err = storage.GetTrace(traceId)
 	if err != nil {
 		t.Fatalf("Error retrieving trace: %v", err)
 	}
 
-	if !reflect.DeepEqual(sortedDataSet, trace) {
-		t.Fatalf("Expected retrieved trace to be equal to %v; got %v", sortedDataSet, trace)
+	if !reflect.DeepEqual(sortedDataSet, traceLog) {
+		t.Fatalf("Expected retrieved trace to be equal to %v; got %v", sortedDataSet, traceLog)
 	}
 
 	// Get dependencies
-	depTests := []trace.ServiceDependencies{
-		trace.ServiceDependencies{Service: "com.service1", Dependencies: []string{"com.service2"}},
-		trace.ServiceDependencies{Service: "com.service2", Dependencies: []string{"com.service3"}},
-		trace.ServiceDependencies{Service: "com.service3", Dependencies: []string{}},
+	depTests := []trace.Dependencies{
+		trace.Dependencies{Service: "com.service1", Dependencies: []string{"com.service2"}},
+		trace.Dependencies{Service: "com.service2", Dependencies: []string{"com.service3"}},
+		trace.Dependencies{Service: "com.service3", Dependencies: []string{}},
 	}
 
 	// Fetch using filters
