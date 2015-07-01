@@ -136,6 +136,7 @@ func (r *Redis) GetDependencies(srvFilter ...string) ([]trace.Dependencies, erro
 		if err != nil {
 			return nil, err
 		}
+		sort.Strings(srvFilter)
 	}
 
 	// Fetch deps in a single batch
