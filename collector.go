@@ -37,7 +37,10 @@ func (c *Collector) start() {
 			select {
 			case <-c.shutdownChan:
 				return
-			case evt := <-c.TraceChan:
+			case evt, ok := <-c.TraceChan:
+				if !ok {
+					return
+				}
 				go func(evt *middleware.TraceEntry) {
 					c.storage.Store(evt, time.Hour*1)
 				}(&evt)
