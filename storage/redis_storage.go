@@ -1,4 +1,4 @@
-package trace
+package storage
 
 import (
 	"time"
@@ -8,6 +8,7 @@ import (
 
 	"sort"
 
+	"github.com/achilleasa/trace"
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -18,7 +19,7 @@ type Redis struct {
 }
 
 // Create a new Redis storage.
-func NewRedisStorage(redisEndpoint string, password string, db uint, timeout time.Duration) *Redis {
+func NewRedis(redisEndpoint string, password string, db uint, timeout time.Duration) *Redis {
 	return &Redis{
 		connPool: &redis.Pool{
 			MaxIdle:     3,
@@ -53,7 +54,7 @@ func NewRedisStorage(redisEndpoint string, password string, db uint, timeout tim
 
 // Store a trace entry and set a TTL on it. If the ttl is 0 then the
 // trace record will never expire. Implements the Storage interface.
-func (r *Redis) Store(logEntry *TraceEntry, ttl time.Duration) error {
+func (r *Redis) Store(logEntry *trace.Record, ttl time.Duration) error {
 	json, err := json.Marshal(logEntry)
 	if err != nil {
 		return err
@@ -77,7 +78,7 @@ func (r *Redis) Store(logEntry *TraceEntry, ttl time.Duration) error {
 
 	// If this is an outgoing request, add the destination to the dependency set
 	// for the origin
-	if logEntry.Type == Request {
+	if logEntry.Type == trace.Request {
 		conn.Send("SADD", fmt.Sprintf("trace.%s.deps", logEntry.From), logEntry.To)
 	}
 
@@ -87,7 +88,7 @@ func (r *Redis) Store(logEntry *TraceEntry, ttl time.Duration) error {
 }
 
 // Fetch a set of time-ordered trace entries with the given trace-id.
-func (r *Redis) GetTrace(traceId string) (Trace, error) {
+func (r *Redis) GetTrace(traceId string) (trace.Trace, error) {
 
 	conn := r.connPool.Get()
 	defer conn.Close()
@@ -106,25 +107,25 @@ func (r *Redis) GetTrace(traceId string) (Trace, error) {
 	}
 
 	// Unmarshal raw data
-	trace := make(Trace, len)
+	traceLog := make(trace.Trace, len)
 	for index, rawRow := range rawRows {
-		entry := TraceEntry{}
+		entry := trace.Record{}
 		err = json.Unmarshal([]byte(rawRow), &entry)
 		if err != nil {
 			return nil, err
 		}
-		trace[index] = entry
+		traceLog[index] = entry
 	}
 
 	// Sort the trace so entries appear in insertion order
-	sort.Sort(trace)
+	sort.Sort(traceLog)
 
-	return trace, nil
+	return traceLog, nil
 }
 
 // Get service dependencies optionally filtered by a set of service names. If no filters are
 // specified then the response will include all services currently known to the storage.
-func (r *Redis) GetDependencies(srvFilter ...string) ([]ServiceDependencies, error) {
+func (r *Redis) GetDependencies(srvFilter ...string) ([]trace.ServiceDependencies, error) {
 	conn := r.connPool.Get()
 	defer conn.Close()
 
@@ -149,10 +150,10 @@ func (r *Redis) GetDependencies(srvFilter ...string) ([]ServiceDependencies, err
 
 	// Assemble deps
 	replyCount := len(srvFilter)
-	serviceDeps := make([]ServiceDependencies, replyCount)
+	serviceDeps := make([]trace.ServiceDependencies, replyCount)
 	for index := 0; index < replyCount; index++ {
 		deps, _ := redis.Strings(replies[index], nil)
-		serviceDeps[index] = ServiceDependencies{
+		serviceDeps[index] = trace.ServiceDependencies{
 			Service:      srvFilter[index],
 			Dependencies: deps,
 		}
