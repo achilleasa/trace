@@ -1,61 +1,63 @@
-package trace
+package trace_test
 
 import (
 	"reflect"
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/achilleasa/trace"
 )
 
 func TestTraceSorting(t *testing.T) {
 	now := time.Now()
 
 	type spec struct {
-		input    Trace
-		expected Trace
+		input    trace.Trace
+		expected trace.Trace
 	}
 
 	testCases := []spec{
 		{
-			input: Trace{
-				TraceEntry{Type: Request, Timestamp: now.Add(time.Second * 2)},
-				TraceEntry{Type: Response, Timestamp: now.Add(time.Second)},
-				TraceEntry{Type: Request, Timestamp: now},
+			input: trace.Trace{
+				trace.Record{Type: trace.Request, Timestamp: now.Add(time.Second * 2)},
+				trace.Record{Type: trace.Response, Timestamp: now.Add(time.Second)},
+				trace.Record{Type: trace.Request, Timestamp: now},
 			},
-			expected: Trace{
-				TraceEntry{Type: Request, Timestamp: now},
-				TraceEntry{Type: Response, Timestamp: now.Add(time.Second)},
-				TraceEntry{Type: Request, Timestamp: now.Add(time.Second * 2)},
-			},
-		},
-		{
-			input: Trace{
-				TraceEntry{Type: Response, Timestamp: now},
-				TraceEntry{Type: Request, Timestamp: now},
-			},
-			expected: Trace{
-				TraceEntry{Type: Request, Timestamp: now},
-				TraceEntry{Type: Response, Timestamp: now},
+			expected: trace.Trace{
+				trace.Record{Type: trace.Request, Timestamp: now},
+				trace.Record{Type: trace.Response, Timestamp: now.Add(time.Second)},
+				trace.Record{Type: trace.Request, Timestamp: now.Add(time.Second * 2)},
 			},
 		},
 		{
-			input: Trace{
-				TraceEntry{Type: Request, Timestamp: now},
-				TraceEntry{Type: Response, Timestamp: now},
+			input: trace.Trace{
+				trace.Record{Type: trace.Response, Timestamp: now},
+				trace.Record{Type: trace.Request, Timestamp: now},
 			},
-			expected: Trace{
-				TraceEntry{Type: Request, Timestamp: now},
-				TraceEntry{Type: Response, Timestamp: now},
+			expected: trace.Trace{
+				trace.Record{Type: trace.Request, Timestamp: now},
+				trace.Record{Type: trace.Response, Timestamp: now},
 			},
 		},
 		{
-			input: Trace{
-				TraceEntry{Type: Request, Timestamp: now},
-				TraceEntry{Type: Response, Timestamp: now.Add(time.Second)},
+			input: trace.Trace{
+				trace.Record{Type: trace.Request, Timestamp: now},
+				trace.Record{Type: trace.Response, Timestamp: now},
 			},
-			expected: Trace{
-				TraceEntry{Type: Request, Timestamp: now},
-				TraceEntry{Type: Response, Timestamp: now.Add(time.Second)},
+			expected: trace.Trace{
+				trace.Record{Type: trace.Request, Timestamp: now},
+				trace.Record{Type: trace.Response, Timestamp: now},
+			},
+		},
+		{
+			input: trace.Trace{
+				trace.Record{Type: trace.Request, Timestamp: now},
+				trace.Record{Type: trace.Response, Timestamp: now.Add(time.Second)},
+			},
+			expected: trace.Trace{
+				trace.Record{Type: trace.Request, Timestamp: now},
+				trace.Record{Type: trace.Response, Timestamp: now.Add(time.Second)},
 			},
 		},
 	}

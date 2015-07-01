@@ -8,7 +8,7 @@ import (
 type Storage interface {
 	// Store a trace entry and set a TTL on it. If the ttl is 0 then the
 	// trace record will never expire
-	Store(logEntry *TraceEntry, ttl time.Duration) error
+	Store(logEntry *Record, ttl time.Duration) error
 
 	// Fetch a set of time-ordered trace entries with the given trace-id
 	GetTrace(traceId string) (Trace, error)

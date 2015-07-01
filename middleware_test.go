@@ -1,9 +1,11 @@
-package trace
+package trace_test
 
 import (
 	"errors"
 	"testing"
 
+	"github.com/achilleasa/trace"
+	"github.com/achilleasa/trace/storage"
 	"github.com/achilleasa/usrv"
 	"github.com/achilleasa/usrv/usrvtest"
 	"golang.org/x/net/context"
@@ -14,13 +16,13 @@ func TestTracerWithoutTraceId(t *testing.T) {
 
 	processedChan := make(chan struct{})
 
-	storage := NewMemoryStorage()
+	storage := storage.NewMemory()
 	defer storage.Close()
-	storage.afterStore = func() {
+	storage.AfterStore = func() {
 		processedChan <- struct{}{}
 	}
 
-	collector := NewCollector(storage)
+	collector := trace.NewCollector(storage)
 	defer collector.Close()
 
 	ep := usrv.Endpoint{
@@ -29,7 +31,7 @@ func TestTracerWithoutTraceId(t *testing.T) {
 		}),
 	}
 
-	err = Tracer(collector)(&ep)
+	err = trace.Tracer(collector)(&ep)
 	if err != nil {
 		t.Fatalf("Error applying Tracer() to endpoint: %v", err)
 	}
@@ -44,9 +46,9 @@ func TestTracerWithoutTraceId(t *testing.T) {
 	w := usrvtest.NewRecorder()
 	ep.Handler.Serve(context.Background(), w, msg)
 
-	traceId := w.Header().Get(CtxTraceId)
+	traceId := w.Header().Get(trace.CtxTraceId)
 	if traceId == nil {
-		t.Fatalf("Expected middleware to set response writer header %s", CtxTraceId)
+		t.Fatalf("Expected middleware to set response writer header %s", trace.CtxTraceId)
 	}
 
 	// Block till both entries are processed
@@ -54,20 +56,20 @@ func TestTracerWithoutTraceId(t *testing.T) {
 	<-processedChan
 
 	// Fetch trace
-	trace, err := storage.GetTrace(traceId.(string))
+	traceLog, err := storage.GetTrace(traceId.(string))
 	if err != nil {
 		t.Fatalf("Error retrieving trace with id %s: %v", traceId, err)
 	}
-	if len(trace) != 2 {
-		t.Fatalf("Expected trace len to be 2; got %d", len(trace))
+	if len(traceLog) != 2 {
+		t.Fatalf("Expected trace len to be 2; got %d", len(traceLog))
 	}
 
-	traceEntryIn := trace[0]
-	traceEntryOut := trace[1]
+	traceEntryIn := traceLog[0]
+	traceEntryOut := traceLog[1]
 
 	// Validate REQ trace
-	if traceEntryIn.Type != Request {
-		t.Fatalf("Expected trace to be of type %v; got %v", Request, traceEntryIn.Type)
+	if traceEntryIn.Type != trace.Request {
+		t.Fatalf("Expected trace to be of type %v; got %v", trace.Request, traceEntryIn.Type)
 	}
 	if traceEntryIn.CorrelationId != msg.CorrelationId {
 		t.Fatalf("Expected trace CorrelationId to be %s; got %s", msg.CorrelationId, traceEntryIn.CorrelationId)
@@ -86,8 +88,8 @@ func TestTracerWithoutTraceId(t *testing.T) {
 	}
 
 	// Validate RES trace
-	if traceEntryOut.Type != Response {
-		t.Fatalf("Expected trace to be of type %v; got %v", Response, traceEntryOut.Type)
+	if traceEntryOut.Type != trace.Response {
+		t.Fatalf("Expected trace to be of type %v; got %v", trace.Response, traceEntryOut.Type)
 	}
 	if traceEntryOut.CorrelationId != msg.CorrelationId {
 		t.Fatalf("Expected trace CorrelationId to be %s; got %s", msg.CorrelationId, traceEntryOut.CorrelationId)
@@ -113,13 +115,13 @@ func TestTracerWithExistingTraceId(t *testing.T) {
 
 	processedChan := make(chan struct{})
 
-	storage := NewMemoryStorage()
+	storage := storage.NewMemory()
 	defer storage.Close()
-	storage.afterStore = func() {
+	storage.AfterStore = func() {
 		processedChan <- struct{}{}
 	}
 
-	collector := NewCollector(storage)
+	collector := trace.NewCollector(storage)
 	defer collector.Close()
 
 	ep := usrv.Endpoint{
@@ -128,7 +130,7 @@ func TestTracerWithExistingTraceId(t *testing.T) {
 		}),
 	}
 
-	err = Tracer(collector)(&ep)
+	err = trace.Tracer(collector)(&ep)
 	if err != nil {
 		t.Fatalf("Error applying Tracer() to endpoint: %v", err)
 	}
@@ -142,14 +144,14 @@ func TestTracerWithExistingTraceId(t *testing.T) {
 
 	// Send a request with an existing trace id
 	existingTraceId := "0-0-0-0"
-	msg.Headers.Set(CtxTraceId, existingTraceId)
+	msg.Headers.Set(trace.CtxTraceId, existingTraceId)
 
 	w := usrvtest.NewRecorder()
 	ep.Handler.Serve(context.Background(), w, msg)
 
-	traceId := w.Header().Get(CtxTraceId)
+	traceId := w.Header().Get(trace.CtxTraceId)
 	if traceId == nil {
-		t.Fatalf("Expected middleware to set response writer header %s", CtxTraceId)
+		t.Fatalf("Expected middleware to set response writer header %s", trace.CtxTraceId)
 	}
 	if traceId != existingTraceId {
 		t.Fatalf("Middleware did not reuse existing traceId %s; got %s", existingTraceId, traceId)
@@ -160,20 +162,20 @@ func TestTracerWithExistingTraceId(t *testing.T) {
 	<-processedChan
 
 	// Fetch trace
-	trace, err := storage.GetTrace(traceId.(string))
+	traceLog, err := storage.GetTrace(traceId.(string))
 	if err != nil {
 		t.Fatalf("Error retrieving trace with id %s: %v", traceId, err)
 	}
-	if len(trace) != 2 {
-		t.Fatalf("Expected trace len to be 2; got %d", len(trace))
+	if len(traceLog) != 2 {
+		t.Fatalf("Expected trace len to be 2; got %d", len(traceLog))
 	}
 
-	traceEntryIn := trace[0]
-	traceEntryOut := trace[1]
+	traceEntryIn := traceLog[0]
+	traceEntryOut := traceLog[1]
 
 	// Validate REQ trace
-	if traceEntryIn.Type != Request {
-		t.Fatalf("Expected trace to be of type %v; got %v", Request, traceEntryIn.Type)
+	if traceEntryIn.Type != trace.Request {
+		t.Fatalf("Expected trace to be of type %v; got %v", trace.Request, traceEntryIn.Type)
 	}
 	if traceEntryIn.CorrelationId != msg.CorrelationId {
 		t.Fatalf("Expected trace CorrelationId to be %s; got %s", msg.CorrelationId, traceEntryIn.CorrelationId)
@@ -192,8 +194,8 @@ func TestTracerWithExistingTraceId(t *testing.T) {
 	}
 
 	// Validate RES trace
-	if traceEntryOut.Type != Response {
-		t.Fatalf("Expected trace to be of type %v; got %v", Response, traceEntryOut.Type)
+	if traceEntryOut.Type != trace.Response {
+		t.Fatalf("Expected trace to be of type %v; got %v", trace.Response, traceEntryOut.Type)
 	}
 	if traceEntryOut.CorrelationId != msg.CorrelationId {
 		t.Fatalf("Expected trace CorrelationId to be %s; got %s", msg.CorrelationId, traceEntryOut.CorrelationId)
@@ -218,13 +220,13 @@ func TestTracerWithError(t *testing.T) {
 
 	processedChan := make(chan struct{})
 
-	storage := NewMemoryStorage()
+	storage := storage.NewMemory()
 	defer storage.Close()
-	storage.afterStore = func() {
+	storage.AfterStore = func() {
 		processedChan <- struct{}{}
 	}
 
-	collector := NewCollector(storage)
+	collector := trace.NewCollector(storage)
 	defer collector.Close()
 
 	ep := usrv.Endpoint{
@@ -234,7 +236,7 @@ func TestTracerWithError(t *testing.T) {
 		}),
 	}
 
-	err = Tracer(collector)(&ep)
+	err = trace.Tracer(collector)(&ep)
 	if err != nil {
 		t.Fatalf("Error applying Tracer() to endpoint: %v", err)
 	}
@@ -249,9 +251,9 @@ func TestTracerWithError(t *testing.T) {
 	w := usrvtest.NewRecorder()
 	ep.Handler.Serve(context.Background(), w, msg)
 
-	traceId := w.Header().Get(CtxTraceId)
+	traceId := w.Header().Get(trace.CtxTraceId)
 	if traceId == nil {
-		t.Fatalf("Expected middleware to set response writer header %s", CtxTraceId)
+		t.Fatalf("Expected middleware to set response writer header %s", trace.CtxTraceId)
 	}
 
 	// Block till both entries are processed
@@ -259,19 +261,19 @@ func TestTracerWithError(t *testing.T) {
 	<-processedChan
 
 	// Fetch trace
-	trace, err := storage.GetTrace(traceId.(string))
+	traceLog, err := storage.GetTrace(traceId.(string))
 	if err != nil {
 		t.Fatalf("Error retrieving trace with id %s: %v", traceId, err)
 	}
-	if len(trace) != 2 {
-		t.Fatalf("Expected trace len to be 2; got %d", len(trace))
+	if len(traceLog) != 2 {
+		t.Fatalf("Expected trace len to be 2; got %d", len(traceLog))
 	}
 
-	traceEntryOut := trace[1]
+	traceEntryOut := traceLog[1]
 
 	// Validate RES trace
-	if traceEntryOut.Type != Response {
-		t.Fatalf("Expected trace to be of type %v; got %v", Response, traceEntryOut.Type)
+	if traceEntryOut.Type != trace.Response {
+		t.Fatalf("Expected trace to be of type %v; got %v", trace.Response, traceEntryOut.Type)
 	}
 	if traceEntryOut.CorrelationId != msg.CorrelationId {
 		t.Fatalf("Expected trace CorrelationId to be %s; got %s", msg.CorrelationId, traceEntryOut.CorrelationId)
@@ -296,7 +298,7 @@ func TestTracerWithError(t *testing.T) {
 //func TestTracerNonBlockingMode(t *testing.T) {
 //	ep := usrv.Endpoint{
 //		Name: "traceTest",
-//		Handler: usrv.HandlerFunc(func(ctx context.Context, rw usrv.ResponseWriter, req *usrv.Message) {
+//		Handler: usrv.HandlerFunc(func(ctx context.Context, rw usrv.trace.ResponseWriter, req *usrv.Message) {
 //			rw.WriteError(errors.New("I cannot allow you to do that Dave"))
 //		}),
 //	}

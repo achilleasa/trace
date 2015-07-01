@@ -58,7 +58,7 @@ func Tracer(collector *Collector) usrv.EndpointOption {
 			responseWriter.Header().Set(CtxTraceId, traceId)
 
 			// Trace incoming request. Use a select statement to ensure write is non-blocking.
-			traceEntry := TraceEntry{
+			traceEntry := Record{
 				Timestamp:     time.Now(),
 				TraceId:       traceId,
 				CorrelationId: request.CorrelationId,
@@ -84,7 +84,7 @@ func Tracer(collector *Collector) usrv.EndpointOption {
 					errMsg = errVal.(string)
 				}
 
-				traceEntry := TraceEntry{
+				traceEntry := Record{
 					Timestamp:     time.Now(),
 					TraceId:       traceId,
 					CorrelationId: request.CorrelationId,

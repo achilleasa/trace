@@ -20,7 +20,7 @@ type ServiceDependencies struct {
 
 // The TraceEntry structure represents a trace entry
 // that is emitted by the Tracer middleware.
-type TraceEntry struct {
+type Record struct {
 	Timestamp     time.Time `json:"timestamp"`
 	TraceId       string    `json:"trace_id"`
 	CorrelationId string    `json:"correlation_id"`
@@ -33,7 +33,7 @@ type TraceEntry struct {
 }
 
 // A Trace is a list of TraceLog entries.
-type Trace []TraceEntry
+type Trace []Record
 
 // Get Trace len. Implements sort.Interface
 func (t Trace) Len() int {

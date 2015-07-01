@@ -11,7 +11,7 @@ type Collector struct {
 	shutdownChan chan struct{}
 
 	// A buffered channel for processing trace data
-	TraceChan chan TraceEntry
+	TraceChan chan Record
 
 	// A storage engine for the processed data
 	storage Storage
@@ -24,7 +24,7 @@ type Collector struct {
 func NewCollector(storage Storage) *Collector {
 	collector := &Collector{
 		shutdownChan: make(chan struct{}, 1),
-		TraceChan:    make(chan TraceEntry, 1000),
+		TraceChan:    make(chan Record, 1000),
 		storage:      storage,
 	}
 
@@ -46,7 +46,7 @@ func (c *Collector) start() {
 				if !ok {
 					return
 				}
-				go func(evt *TraceEntry) {
+				go func(evt *Record) {
 					c.storage.Store(evt, time.Hour*1)
 				}(&evt)
 			}

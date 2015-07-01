@@ -1,24 +1,27 @@
-package trace
+package trace_test
 
 import (
 	"testing"
 	"time"
+
+	"github.com/achilleasa/trace"
+	"github.com/achilleasa/trace/storage"
 )
 
 func TestCollector(t *testing.T) {
-	storage := NewMemoryStorage()
-	collector := NewCollector(storage)
+	storage := storage.NewMemory()
+	collector := trace.NewCollector(storage)
 
 	stored := make(chan struct{})
-	storage.afterStore = func() {
+	storage.AfterStore = func() {
 		stored <- struct{}{}
 	}
 
 	// emit trace
 	now := time.Now()
 	traceId := "abcd-1234-1234-1234"
-	collector.TraceChan <- TraceEntry{
-		Type:      Response,
+	collector.TraceChan <- trace.Record{
+		Type:      trace.Response,
 		From:      "com.service3",
 		To:        "com.service2",
 		Timestamp: now,
@@ -37,19 +40,19 @@ func TestCollector(t *testing.T) {
 }
 
 func TestCollectorChannelClose(t *testing.T) {
-	storage := NewMemoryStorage()
-	collector := NewCollector(storage)
+	storage := storage.NewMemory()
+	collector := trace.NewCollector(storage)
 
 	stored := make(chan struct{})
-	storage.afterStore = func() {
+	storage.AfterStore = func() {
 		stored <- struct{}{}
 	}
 
 	// emit trace
 	now := time.Now()
 	traceId := "abcd-1234-1234-1234"
-	collector.TraceChan <- TraceEntry{
-		Type:      Response,
+	collector.TraceChan <- trace.Record{
+		Type:      trace.Response,
 		From:      "com.service3",
 		To:        "com.service2",
 		Timestamp: now,
