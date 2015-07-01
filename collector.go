@@ -3,6 +3,8 @@ package trace
 import (
 	"time"
 
+	"sync"
+
 	"github.com/achilleasa/usrv/middleware"
 )
 
@@ -15,12 +17,15 @@ type Collector struct {
 
 	// A storage engine for the processed data
 	storage Storage
+
+	// A waitgroup for ensuring that the collector shuts down properly
+	waitGroup sync.WaitGroup
 }
 
 // Create a new collector using the supplied storage.
 func NewCollector(storage Storage) *Collector {
 	collector := &Collector{
-		shutdownChan: make(chan struct{}),
+		shutdownChan: make(chan struct{}, 1),
 		TraceChan:    make(chan middleware.TraceEntry, 1000),
 		storage:      storage,
 	}
@@ -32,7 +37,9 @@ func NewCollector(storage Storage) *Collector {
 
 // Start event capturing loop.
 func (c *Collector) start() {
+	c.waitGroup.Add(1)
 	go func() {
+		defer c.waitGroup.Done()
 		for {
 			select {
 			case <-c.shutdownChan:
@@ -56,5 +63,6 @@ func (c *Collector) Close() {
 	}
 
 	c.shutdownChan <- struct{}{}
-	close(c.shutdownChan)
+	c.waitGroup.Wait()
+	c.shutdownChan = nil
 }
