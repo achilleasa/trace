@@ -29,7 +29,7 @@ func init() {
 }
 
 func TestRedisStorage(t *testing.T) {
-	storage := NewRedis(redisEndpoint, "", 1, time.Second*10)
+	storage := NewRedis(redisEndpoint, "", 0, time.Second*10)
 	defer storage.Close()
 
 	// flush db
@@ -39,14 +39,14 @@ func TestRedisStorage(t *testing.T) {
 	}
 
 	now := time.Now()
-	traceId := "abcd-1234-1234-1234"
+	traceId := "0f3ac0ef-5282-41aa-b7b7-ed45c4100186"
 
 	// Shuffled records to simulate appends by different processes
 	dataSet := trace.Trace{
-		trace.Record{Type: trace.Response, From: "com.service3", To: "com.service2", Timestamp: now.Add(time.Second * 3), TraceId: traceId},
-		trace.Record{Type: trace.Request, From: "com.service2", To: "com.service3", Timestamp: now.Add(time.Second * 2), TraceId: traceId},
-		trace.Record{Type: trace.Response, From: "com.service2", To: "com.service1", Timestamp: now.Add(time.Second * 4), TraceId: traceId},
-		trace.Record{Type: trace.Request, From: "com.service1", To: "com.service2", Timestamp: now.Add(time.Second * 1), TraceId: traceId},
+		trace.Record{Type: trace.Response, From: "com.service3", To: "com.service2", Timestamp: now.Add(time.Second * 3), TraceId: traceId, CorrelationId: "c-2222"},
+		trace.Record{Type: trace.Request, From: "com.service2", To: "com.service3", Timestamp: now.Add(time.Second * 2), TraceId: traceId, CorrelationId: "c-2222"},
+		trace.Record{Type: trace.Response, From: "com.service2", To: "com.service1", Timestamp: now.Add(time.Second * 4), TraceId: traceId, CorrelationId: "c-1111"},
+		trace.Record{Type: trace.Request, From: "com.service1", To: "com.service2", Timestamp: now.Add(time.Second * 1), TraceId: traceId, CorrelationId: "c-1111"},
 	}
 
 	// Generate the final sorted set that we will use for comparisons
@@ -55,7 +55,7 @@ func TestRedisStorage(t *testing.T) {
 	sort.Sort(sortedDataSet)
 
 	// Insert trace
-	ttl := time.Minute
+	ttl := time.Hour * 48
 	for index, entry := range dataSet {
 		err := storage.Store(&entry, ttl)
 		if err != nil {
