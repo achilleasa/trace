@@ -1,8 +1,6 @@
 package trace
 
-import (
-	"time"
-)
+import "time"
 
 type TraceType string
 
@@ -21,7 +19,7 @@ type Dependencies struct {
 // The TraceEntry structure represents a trace entry
 // that is emitted by the Tracer middleware.
 type Record struct {
-	Timestamp     time.Time `json:"timestamp"`
+	Timestamp     time.Time `json:"ts"`
 	TraceId       string    `json:"trace_id"`
 	CorrelationId string    `json:"correlation_id"`
 	Type          TraceType `json:"type"`
