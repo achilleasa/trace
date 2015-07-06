@@ -36,7 +36,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		if strings.HasPrefix(r.URL.Path, "/trace/") {
 			handlerFunc = s.getTrace
-		} else if strings.HasPrefix(r.URL.Path, "/deps/") {
+		} else if strings.HasPrefix(r.URL.Path, "/deps") {
 			handlerFunc = s.getDeps
 		} else if r.URL.Path == "/" {
 			handlerFunc = s.getIndex
@@ -49,7 +49,6 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Serve the index page.
 func (s *server) getIndex(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Serving index\n")
 	http.ServeFile(w, r, "http/static/index.html")
 }
 
@@ -69,7 +68,13 @@ func (s *server) getTrace(w http.ResponseWriter, r *http.Request) {
 // Get service dependencies optionally filtered by a list of service names.
 func (s *server) getDeps(w http.ResponseWriter, r *http.Request) {
 	// Extract filters from GET params
-	srvFilter := strings.Split(r.URL.Query().Get("srv_filter"), ",")
+	filterVal := r.URL.Query().Get("srv_filter")
+	var srvFilter []string
+	if filterVal != "" {
+		srvFilter = strings.Split(filterVal, ",")
+	} else {
+		srvFilter = nil
+	}
 
 	trace, err := s.storageEngine.GetDependencies(srvFilter...)
 	if err != nil {
@@ -107,7 +112,7 @@ func (s *server) send(w http.ResponseWriter, payload interface{}) {
 
 var (
 	redisEndpoint = flag.String("redis-host", ":6379", "Redis host (including port)")
-	redisDb       = flag.Int("redis-db", ":6379", "Redis host (including port)")
+	redisDb       = flag.Uint("redis-db", 0, "Redis db number")
 	redisPassword = flag.String("redis-password", "", "Redis password")
 	port          = flag.Int("port", 8080, "The http server port")
 	storageEngine *storage.Redis
@@ -130,7 +135,7 @@ func main() {
 	flag.Parse()
 
 	log.Printf("Using REDIS storage: %s (using password: %v)\n", *redisEndpoint, *redisPassword != "")
-	storageEngine = storage.NewRedis(*redisEndpoint, *redisPassword, 0, time.Second*10)
+	storageEngine = storage.NewRedis(*redisEndpoint, *redisPassword, *redisDb, time.Second*10)
 
 	log.Printf("Listening for incoming connections on port %d\n", *port)
 	http.ListenAndServe(fmt.Sprintf(":%d", *port), newServer(storageEngine))

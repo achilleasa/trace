@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="en" ng-app="app">
+<head>
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<title>usrv trace visualization</title>
+	<link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/pure-min.css"/>
+	<base href="/"/>
+	<style>
+		* {
+			-webkit-box-sizing: border-box;
+			-moz-box-sizing: border-box;
+			box-sizing: border-box;
+		}
+
+		body {
+			line-height: 1.7em;
+			color: #7f8c8d;
+			font-size: 13px;
+		}
+
+		h1, h2, h3, h4, h5, h6, label {
+			color: #34495e;
+		}
+
+		.home-menu {
+			padding: 0.5em;
+			box-shadow: 0 1px 1px rgba(0, 0, 0, 0.10);
+			background: #2d3e50;
+		}
+
+		.pure-menu.pure-menu-fixed {
+			/* Fixed menus normally have a border at the bottom. */
+			border-bottom: none;
+			/* I need a higher z-index here because of the scroll-over effect. */
+			z-index: 4;
+		}
+
+		.home-menu .pure-menu-heading {
+			color: white;
+			font-weight: 400;
+			font-size: 120%;
+		}
+
+		.home-menu .pure-menu-selected a {
+			color: white !important;
+		}
+
+		.home-menu a {
+			color: #6FBEF3;
+		}
+
+		.home-menu li a:hover, .home-menu li a:focus {
+			background: none;
+			border: none;
+			color: #AECFE5;
+		}
+
+		.content-wrapper {
+			margin-top: 50px;
+		}
+
+		.pure-form label {
+			margin: 1em 0 0;
+			font-weight: bold;
+			font-size: 100%;
+		}
+
+		.pure-form input[type] {
+			border: 2px solid #ddd;
+			box-shadow: none;
+			font-size: 100%;
+			width: 100%;
+			margin-bottom: 1em;
+		}
+
+		.pure-g > div {
+			-webkit-box-sizing: border-box;
+			-moz-box-sizing: border-box;
+			box-sizing: border-box;
+		}
+
+		.l-box {
+			padding: 0 1em;
+		}
+
+		.ng-cloak {
+			display: none !important;
+		}
+
+		hr {
+			height: 2px;
+			border: 0;
+			background-color: #333;
+		}
+
+		h2 .pure-button {
+			font-size: 70%;
+		}
+
+		.node {
+			font: 300 11px "Helvetica Neue", Helvetica, Arial, sans-serif;
+			fill: #bbb;
+		}
+
+		circle {
+			fill: #fff;
+			stroke: steelblue;
+			stroke-width: 1.5px;
+		}
+
+		.node:hover {
+			fill: #000;
+			cursor: pointer;
+		}
+
+		.link {
+			stroke: steelblue;
+			stroke-opacity: .4;
+			fill: none;
+			pointer-events: none;
+		}
+
+		.node:hover,
+		.node--source,
+		.node--target {
+			font-weight: 700;
+		}
+
+		.node--root {
+			font-weight: 700;
+		}
+
+		.node--source {
+			fill: #d62728;
+		}
+
+		.node--target {
+			fill: #2ca02c;
+		}
+
+		.link--source,
+		.link--target {
+			stroke-opacity: 1;
+			stroke-width: 2px;
+		}
+
+		.link--source {
+			stroke: #2ca02c;
+			marker-end: url(#src-arrow);
+		}
+
+		.link--target {
+			stroke-dasharray: 3, 3;
+			stroke: #d62728;
+			marker-end: url(#dst-arrow);
+		}
+
+		.link--direct {
+			marker-end: url(#src-arrow);
+		}
+
+		.link--indirect {
+			stroke-dasharray: 3, 3;
+			marker-end: url(#src-arrow);
+		}
+
+		marker#src-arrow {
+			fill: #2ca02c;
+		}
+
+		marker#dst-arrow {
+			fill: #d62728;
+		}
+
+		.label--source {
+			color: #d62728;
+		}
+
+		.label--target {
+			color: #2ca02c;
+		}
+
+	</style>
+</head>
+<body ng-controller="IndexCtrl" class="ng-cloak">
+<div class="header">
+	<div class="home-menu pure-menu pure-menu-horizontal pure-menu-fixed">
+		<a class="pure-menu-heading" href="">usrv &dash; tracer</a>
+
+		<ul class="pure-menu-list">
+			<li class="pure-menu-item"
+				ng-class="{'pure-menu-selected':$route.current.activeTab == 'trace'}">
+				<a href="#/trace/uml" class="pure-menu-link">Visualize trace</a>
+			</li>
+			<li class="pure-menu-item"
+				ng-class="{'pure-menu-selected':$route.current.activeTab == 'deps'}">
+				<a href="#/service/dependencies" class="pure-menu-link">Service dependencies</a>
+			</li>
+		</ul>
+	</div>
+</div>
+
+
+<div class="content-wrapper">
+	<div class="content" ng-view>
+	</div>
+</div>
+
+<script src="//ajax.googleapis.com/ajax/libs/angularjs/1.4.1/angular.min.js"></script>
+<script src="//ajax.googleapis.com/ajax/libs/angularjs/1.4.1/angular-route.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/raphael/2.1.4/raphael-min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.0/lodash.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/js-sequence-diagrams/1.0.6/sequence-diagram-min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+<script type="text/ng-template" id="views/trace.html">
+	<div class="pure-g">
+
+		<div class="pure-u-1-1 l-box">
+			<h2 class="content-subhead">Request trace visualizer</h2>
+		</div>
+
+		<div class="pure-u-1-3 l-box">
+			<form class="pure-form pure-form-stacked">
+				<fieldset>
+					<input type="text" ng-model="traceId" placeholder="Enter trace id"/>
+					<button class="pure-button pure-button-primary" ng-disabled="loading" ng-click="search()">
+						{{loading ? "Loading..." :"Search"}}
+					</button>
+				</fieldset>
+			</form>
+		</div>
+		<div class="pure-u-1-1 l-box">
+			<hr/>
+		</div>
+		<div class="pure-u-1-1 l-box">
+			<span>{{$scope.error}}</span>
+
+			<div id="seqDiagram" align="center"></div>
+		</div>
+	</div>
+
+</script>
+<script type="text/ng-template" id="views/deps.html">
+	<div class="pure-g">
+
+		<div class='pure-u-1-1 l-box'>
+			<h2 class='content-subhead'>
+				Service dependency graph
+				<button style="float:right;"
+						class="pure-button pure-button-primary pure-button-sm"
+						ng-disabled="loading"
+						ng-click="refresh()">
+					{{loading ? "Loading..." :"Refresh"}}
+				</button>
+				<button style="float:right;margin-right:10px;"
+						class="pure-button pure-button-sm"
+						ng-if="srvFilter != null"
+						ng-click="clearFilter()">
+					Clear filter
+				</button>
+			</h2>
+
+			<span ng-if="!error && !loading">
+				<span ng-if="srvFilter == null">
+					Hover over a service to see the services it <b>depends on</b>
+					(<span class="label--target">green solid lines</span>) and the services that <b>depend on it</b>
+					(<span class="label--source">red dashed lines</span>). Click on a service to show a filtered
+					view with its direct and indirect dependencies.
+				</span>
+				<span ng-if="srvFilter != null">
+					Showing direct (solid lines) and indirect (dashed lines) dependencies for service <b>{{srvFilter}}</b>.
+				</span>
+			</span>
+
+		</div>
+
+		<div class="pure-u-1-1 l-box">
+			<hr/>
+		</div>
+		<div class="pure-u-1-1 l-box">
+			<span>{{$scope.error}}</span>
+
+			<div id="depChart" align="center"></div>
+		</div>
+	</div>
+</script>
+<script type="text/javascript">
+	'use strict';
+
+	var app = angular.module('app', ['ngRoute']);
+
+	app.config(function ($routeProvider) {
+		$routeProvider
+			.when('/trace/uml', {
+				templateUrl: 'views/trace.html',
+				controller: 'TraceCtrl',
+				activeTab: 'trace'
+			})
+			.when('/service/dependencies', {
+				templateUrl: 'views/deps.html',
+				controller: 'DepsCtrl',
+				activeTab: 'deps'
+			})
+			.otherwise({
+				redirectTo: '/trace/uml'
+			});
+	});
+	app.controller('IndexCtrl', function ($scope, $route) {
+		$scope.$route = $route;
+	}).controller('TraceCtrl', function ($scope, $http) {
+		$scope.loading = false;
+		$scope.traceId = '';
+		$scope.traceLog = null;
+		$scope.error = null;
+
+		$scope.search = function () {
+			$scope.loading = true;
+			$scope.error = null;
+			$scope.traceLog = [];
+			$http
+				.get('/trace/' + $scope.traceId)
+				.success(function (data) {
+					$scope.traceLog = data;
+				})
+				.error(function () {
+					$scope.error = 'An error occured while accessing data';
+				})
+				.finally(function () {
+					$scope.loading = false;
+				});
+		};
+
+		// Register a watch on traceLog to render the trace sequence diagram
+		$scope.$watch('traceLog', function (traceLog) {
+			if (traceLog == null) {
+				return;
+			}
+			document.getElementById('seqDiagram').innerHTML = '';
+			var diagram = Diagram.parse(genDiagram(traceLog));
+			diagram.drawSVG('seqDiagram', {theme: 'simple'});
+		});
+
+		// Generate sequence diagram from a trace log
+		function genDiagram(traceLog) {
+			if (traceLog.length == 0) {
+				return 'Title: ' + ($scope.loading ? 'loading...' : 'no data available');
+			}
+
+			// Calc roundtrip time
+			var endTs = Date.parse(traceLog[traceLog.length - 1].ts);
+			var startTs = Date.parse(traceLog[0].ts);
+			var rtt = Math.abs(endTs - startTs);
+
+			var dg = 'Title: Roundtrip time: ' + rtt + 'ms\n';
+			var reqTsByCorrId = {};
+			traceLog.forEach(function (entry) {
+				var arrow;
+				var label = '';
+				if (entry.type == 'REQ') {
+					arrow = '->';
+					reqTsByCorrId[entry.correlation_id] = Date.parse(entry.ts);
+				} else {
+					// If we can match correlation ids calculate call RTT
+					label = '';
+					if (typeof reqTsByCorrId[entry.correlation_id] !== 'undefined') {
+						label = Math.abs(Date.parse(entry.ts) - reqTsByCorrId[entry.correlation_id]) + 'ms\\n';
+					}
+
+					if (typeof entry.error != 'undefined') {
+						arrow = '-->>';
+						label += entry.error;
+					} else {
+						arrow = '-->';
+					}
+				}
+
+				dg += entry.from + arrow + entry.to + ':' + label + '\n';
+			});
+
+			return dg;
+		}
+
+	}).controller('DepsCtrl', function ($scope, $http) {
+		$scope.loading = false;
+		$scope.error = null;
+		$scope.depData = null;
+		$scope.diameter = 800;
+		$scope.treeHzMargin = 50;
+		$scope.treeVrtMargin = 20;
+		$scope.srvFilter = null;
+
+		$scope.refresh = function () {
+			$scope.loading = true;
+			$scope.error = null;
+			$http
+				.get('/deps')
+				.success(function (data) {
+					$scope.depData = data;
+				})
+				.error(function () {
+					$scope.error = 'An error occured while accessing data';
+				})
+				.finally(function () {
+					$scope.loading = false;
+				});
+		};
+
+		$scope.clearFilter = function () {
+			$scope.srvFilter = null;
+			render();
+		};
+
+		// Redraw the dependency chart when we fetch new data
+		$scope.$watch('depData', function (depData) {
+			if (depData == null) {
+				return;
+			}
+			render();
+		});
+
+		function render() {
+			document.getElementById('depChart').innerHTML = '';
+
+			if ($scope.srvFilter) {
+				renderHierarchical();
+			} else {
+				renderBundled();
+			}
+		}
+
+		function renderHierarchical() {
+
+			function buildHierarchicalNodeTree(rootSrvName) {
+
+				var map = {};
+				$scope.depData.forEach(function (srvDep) {
+					map[srvDep.service] = srvDep;
+				});
+				var processed = {};
+
+				function findDirectDeps(srvName) {
+					if (!processed[srvName]) {
+						var srvDeps = map[srvName];
+						var node = processed[srvName] = {
+							name: srvName,
+							children: []
+						};
+
+						srvDeps.dependencies.forEach(function (depName) {
+							// Avoid loops in graph; this should happen
+							if (processed[depName]) {
+								return;
+							}
+							node.children.push(findDirectDeps(depName));
+						});
+					}
+					return processed[srvName];
+				}
+
+				return findDirectDeps(rootSrvName);
+			}
+
+			var tree = d3.layout.tree()
+				.size([$scope.diameter, $scope.diameter]);
+
+			var diagonal = d3.svg.diagonal()
+				.projection(function (d) {
+					return [d.y, d.x]
+				});
+
+			var svg = d3.select("#depChart").append("svg")
+				.attr("width", $scope.diameter + 2 * $scope.treeHzMargin)
+				.attr("height", $scope.diameter + 2 * $scope.treeVrtMargin)
+				.append("g");
+
+			var nodes = tree.nodes(buildHierarchicalNodeTree($scope.srvFilter)),
+				links = tree.links(nodes);
+
+			// Normalize for fixed-depth.
+			nodes.forEach(function (d) {
+				d.y = d.depth * 180;
+			});
+
+			var link = svg.selectAll(".link")
+				.data(links)
+				.enter().append("path")
+				.attr("class", "link")
+				.attr("d", diagonal)
+				.classed('link--indirect', function (d) {
+					return d.source.depth > 0;
+				})
+				.classed('link--direct', function (d) {
+					return d.source.depth == 0;
+				});
+
+			var node = svg.selectAll(".node")
+				.data(nodes)
+				.enter()
+				.append("g")
+				.attr("transform", function (d) {
+					return "translate(" + d.y + "," + d.x + ")";
+				})
+				.classed('node--root', function (d) {
+					return d.depth == 0;
+				});
+
+			node.append("circle")
+				.attr("r", 4.5);
+
+			node.append("text")
+				.attr("x", function (d) {
+					return d.children || d._children ? -10 : 10;
+				})
+				.attr("dy", "1.2em")
+				.attr("text-anchor", function (d) {
+					return d.children || d._children ? "end" : "start";
+				})
+				.text(function (d) {
+					return d.name;
+				});
+
+			var markers = svg.append("svg:defs").selectAll("marker");
+			markers.data(["src-arrow"])
+				.enter().append("svg:marker")
+				.attr("id", String)
+				.attr("viewBox", "0 -5 10 10")
+				.attr("refX", 16)
+				.attr("refY", 0)
+				.attr("markerWidth", 10)
+				.attr("markerHeight", 10)
+				.attr("orient", "auto")
+				.append("svg:path")
+				.attr("d", "M0,-5L10,0L0,5");
+
+			// Calc max extends for all nodes so we can adjust the svg container to ensure
+			// that the entire chart is visible.
+			var maxLabelWidth = 0;
+			var maxWidth = 0;
+			var maxHeight = 0;
+			svg.selectAll('g')
+				.each(function () {
+					var bbox = this.getBoundingClientRect();
+					maxLabelWidth = Math.max(maxLabelWidth, bbox.width);
+					maxWidth = Math.max(maxWidth, bbox.right);
+					maxHeight = Math.max(maxHeight, bbox.top);
+				});
+
+			// Add enough padding so that the largest label is visible
+			svg.attr("transform", "translate(" + Math.max(maxLabelWidth, $scope.treeHzMargin) + "," + $scope.treeVrtMargin + ")");
+
+			var estW = (Math.max(maxWidth, $scope.diameter) + 2 * Math.max(maxLabelWidth, $scope.treeHzMargin)) + 'px',
+				estH = (Math.max(maxHeight, $scope.diameter) + 2 * $scope.treeVrtMargin) + 'px';
+
+			// Extend svg element and container elem
+			d3.select('svg')
+				.attr('width', estW)
+				.attr('height', estH);
+			d3.select(self.frameElement)
+				.style('width', estW)
+				.style('height', estH);
+		}
+
+		function renderBundled() {
+
+			function buildBundleNodeTree() {
+				var map = {};
+				var root = map[''] = {
+					name: '',
+					children: []
+				};
+
+				function add(name) {
+					var node = map[name];
+					if (!node) {
+						node = map[name] = {
+							name: name,
+							children: [],
+							parent: root
+						};
+						root.children.push(node);
+					}
+					return node;
+				}
+
+				// Process services and dependencies
+				$scope.depData.forEach(function (srv) {
+					add(srv.service);
+					srv.dependencies.forEach(add);
+				});
+
+				return map[''];
+			}
+
+			function buildLinks(nodeCluster) {
+
+				var map = {};
+				nodeCluster.forEach(function (n) {
+					map[n.name] = n;
+				});
+
+				var links = [];
+				$scope.depData.forEach(function (srv) {
+					srv.dependencies.forEach(function (depSrv) {
+						links.push({source: map[srv.service], target: map[depSrv]});
+					});
+				});
+				return links;
+			}
+
+			// Setup chart
+			var outerRadius = $scope.diameter / 2;
+			var innerRadius = outerRadius - 120;
+
+			var cluster = d3.layout.cluster()
+				.size([360, innerRadius])
+				.sort(null)
+				.value(function (d) {
+					return d.size;
+				});
+
+			var bundle = d3.layout.bundle();
+
+			var line = d3.svg.line.radial()
+				.interpolate("bundle")
+				.tension(.85)
+				.radius(function (d) {
+					return d.y;
+				})
+				.angle(function (d) {
+					return d.x / 180 * Math.PI;
+				});
+
+			var svg = d3.select("#depChart").append("svg")
+				.attr("width", $scope.diameter)
+				.attr("height", $scope.diameter)
+				.append("g")
+				.attr("transform", "translate(" + outerRadius + "," + outerRadius + ")");
+
+
+			var markers = svg.append("svg:defs").selectAll("marker");
+
+			markers.data(["src-arrow"])
+				.enter().append("svg:marker")
+				.attr("id", String)
+				.attr("viewBox", "0 -5 10 10")
+				.attr("refX", 4)
+				.attr("refY", 0)
+				.attr("markerWidth", 10)
+				.attr("markerHeight", 5)
+				.attr("orient", "auto")
+				.append("svg:path")
+				.attr("d", "M0,-5L10,0L0,5");
+
+			markers.data(["dst-arrow"])
+				.enter().append("svg:marker")
+				.attr("id", String)
+				.attr("viewBox", "0 -5 10 10")
+				.attr("refX", 4)
+				.attr("refY", 0)
+				.attr("markerWidth", 10)
+				.attr("markerHeight", 5)
+				.attr("orient", "auto")
+				.append("svg:path")
+				.attr("d", "M0,-5L10,0L0,5");
+
+			var nodes = cluster.nodes(buildBundleNodeTree()),
+				links = buildLinks(nodes);
+
+			var link = svg.selectAll(".link")
+				.data(bundle(links))
+				.enter().append("path")
+				.each(function (d) {
+					d.source = d[0];
+					d.target = d[d.length - 1];
+				})
+				.attr("class", "link")
+				.attr("d", line);
+
+			var node = svg.selectAll(".node")
+				.data(nodes.filter(function (n) {
+					return !n.children;
+				}))
+				.enter().append("g")
+				.attr("class", "node")
+				.attr("transform", function (d) {
+					return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")";
+				})
+				.append("text")
+				.attr("dx", function (d) {
+					return d.x < 180 ? 8 : -8;
+				})
+				.attr("dy", ".31em")
+				.attr("text-anchor", function (d) {
+					return d.x < 180 ? "start" : "end";
+				})
+				.attr("transform", function (d) {
+					return d.x < 180 ? null : "rotate(180)";
+				})
+				.text(function (d) {
+					return d.name;
+				})
+				.on("mouseover", function (d) {
+					node
+						.each(function (n) {
+							n.target = n.source = false;
+						});
+					link
+						.classed("link--target", function (l) {
+							if (l.target === d) return l.source.source = true;
+						})
+						.classed("link--source", function (l) {
+							if (l.source === d) return l.target.target = true;
+						})
+						.filter(function (l) {
+							return l.target === d || l.source === d;
+						})
+						.each(function () {
+							this.parentNode.appendChild(this);
+						});
+
+					node
+						.classed("node--target", function (n) {
+							return n.target;
+						})
+						.classed("node--source", function (n) {
+							return n.source;
+						});
+				})
+				.on("mouseout", function (d) {
+					link
+						.classed("link--target", false)
+						.classed("link--source", false);
+
+					node
+						.classed("node--target", false)
+						.classed("node--source", false);
+				})
+				.on("click", function (d) {
+					$scope.$apply(function () {
+						$scope.srvFilter = d.name;
+					});
+					render();
+				});
+
+			d3.select(self.frameElement).style('height', $scope.diameter + 'px');
+		}
+
+		// Trigger load
+		$scope.refresh();
+	});
+</script>
+</body>
+</html>
