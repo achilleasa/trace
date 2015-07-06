@@ -20,11 +20,13 @@ type Collector struct {
 	waitGroup sync.WaitGroup
 }
 
-// Create a new collector using the supplied storage.
-func NewCollector(storage Storage) *Collector {
+// Create a new collector using the supplied storage and allocate a processing queue with depth equal
+// to queueSize. The queueSize parameter should be large enough to handle the rate at which your
+// service emits trace events.
+func NewCollector(storage Storage, queueSize int) *Collector {
 	collector := &Collector{
 		shutdownChan: make(chan struct{}, 1),
-		TraceChan:    make(chan Record, 1000),
+		TraceChan:    make(chan Record, queueSize),
 		storage:      storage,
 	}
 

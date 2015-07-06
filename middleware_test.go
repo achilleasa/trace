@@ -22,7 +22,7 @@ func TestTracerWithoutTraceId(t *testing.T) {
 		processedChan <- struct{}{}
 	}
 
-	collector := trace.NewCollector(storage)
+	collector := trace.NewCollector(storage, 1000)
 	defer collector.Close()
 
 	ep := usrv.Endpoint{
@@ -121,7 +121,7 @@ func TestTracerWithExistingTraceId(t *testing.T) {
 		processedChan <- struct{}{}
 	}
 
-	collector := trace.NewCollector(storage)
+	collector := trace.NewCollector(storage, 1000)
 	defer collector.Close()
 
 	ep := usrv.Endpoint{
@@ -226,7 +226,7 @@ func TestTracerWithError(t *testing.T) {
 		processedChan <- struct{}{}
 	}
 
-	collector := trace.NewCollector(storage)
+	collector := trace.NewCollector(storage, 1000)
 	defer collector.Close()
 
 	ep := usrv.Endpoint{
