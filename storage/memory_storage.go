@@ -108,6 +108,5 @@ func (s *Memory) GetTrace(traceId string) (trace.Trace, error) {
 }
 
 // Shutdown the storage.
-func (s *Memory) Close() error {
-	return nil
+func (s *Memory) Close() {
 }

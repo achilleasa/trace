@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"encoding/json"
 
+	"github.com/achilleasa/service-adapters/redis"
 	"github.com/achilleasa/trace"
 )
 
@@ -29,11 +30,16 @@ func init() {
 }
 
 func TestRedisStorage(t *testing.T) {
-	storage := NewRedis(redisEndpoint, "", 0, time.Second*10)
+	redisSrv := redis.New(redisEndpoint, "", 0, time.Second*10)
+	storage := NewRedis(redisSrv)
 	defer storage.Close()
 
 	// flush db
-	_, err := storage.connPool.Get().Do("FLUSHDB")
+	conn, err := redisSrv.GetConnection()
+	if err != nil {
+		t.Fatalf("Error connecting to redis db: %v", err)
+	}
+	_, err = conn.Do("FLUSHDB")
 	if err != nil {
 		t.Fatalf("Error flushing redis db: %v", err)
 	}

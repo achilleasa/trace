@@ -18,5 +18,5 @@ type Storage interface {
 	GetDependencies(srvFilter ...string) ([]Dependencies, error)
 
 	// Shutdown the storage.
-	Close() error
+	Close()
 }

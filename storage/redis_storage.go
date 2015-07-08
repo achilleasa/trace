@@ -8,59 +8,38 @@ import (
 
 	"sort"
 
+	redisAdapter "github.com/achilleasa/service-adapters/redis"
 	"github.com/achilleasa/trace"
 	"github.com/garyburd/redigo/redis"
 )
 
 // This storage backend is built on top of Redis. Internally it uses
 // a connection pool to provide thread-safe access.
-type Redis struct {
-	connPool *redis.Pool
+type redisStorage struct {
+	redisSrv *redisAdapter.Redis
 }
 
 // Create a new Redis storage.
-func NewRedis(redisEndpoint string, password string, db uint, timeout time.Duration) *Redis {
-	return &Redis{
-		connPool: &redis.Pool{
-			MaxIdle:     3,
-			IdleTimeout: 240 * time.Second,
-			Dial: func() (redis.Conn, error) {
-				c, err := redis.DialTimeout("tcp", redisEndpoint, timeout, timeout, timeout)
-				if err != nil {
-					return nil, err
-				}
-				if password != "" {
-					if _, err = c.Do("AUTH", password); err != nil {
-						c.Close()
-						return nil, err
-					}
-				}
-				if db > 0 {
-					if _, err = c.Do("SELECT", db); err != nil {
-						c.Close()
-						return nil, err
-					}
-				}
+func NewRedis(redisSrv *redisAdapter.Redis) *redisStorage {
+	redisSrv.Dial()
 
-				return c, err
-			},
-			TestOnBorrow: func(c redis.Conn, t time.Time) error {
-				_, err := c.Do("PING")
-				return err
-			},
-		},
+	return &redisStorage{
+		redisSrv: redisSrv,
 	}
 }
 
 // Store a trace entry and set a TTL on it. If the ttl is 0 then the
 // trace record will never expire. Implements the Storage interface.
-func (r *Redis) Store(logEntry *trace.Record, ttl time.Duration) error {
+func (r *redisStorage) Store(logEntry *trace.Record, ttl time.Duration) error {
 	json, err := json.Marshal(logEntry)
 	if err != nil {
 		return err
 	}
 
-	conn := r.connPool.Get()
+	conn, err := r.redisSrv.GetConnection()
+	if err != nil {
+		return err
+	}
 	defer conn.Close()
 
 	conn.Send("MULTI")
@@ -88,9 +67,12 @@ func (r *Redis) Store(logEntry *trace.Record, ttl time.Duration) error {
 }
 
 // Fetch a set of time-ordered trace entries with the given trace-id.
-func (r *Redis) GetTrace(traceId string) (trace.Trace, error) {
+func (r *redisStorage) GetTrace(traceId string) (trace.Trace, error) {
 
-	conn := r.connPool.Get()
+	conn, err := r.redisSrv.GetConnection()
+	if err != nil {
+		return nil, err
+	}
 	defer conn.Close()
 
 	// Get the number of records
@@ -125,11 +107,12 @@ func (r *Redis) GetTrace(traceId string) (trace.Trace, error) {
 
 // Get service dependencies optionally filtered by a set of service names. If no filters are
 // specified then the response will include all services currently known to the storage.
-func (r *Redis) GetDependencies(srvFilter ...string) ([]trace.Dependencies, error) {
-	conn := r.connPool.Get()
+func (r *redisStorage) GetDependencies(srvFilter ...string) ([]trace.Dependencies, error) {
+	conn, err := r.redisSrv.GetConnection()
+	if err != nil {
+		return nil, err
+	}
 	defer conn.Close()
-
-	var err error
 
 	if len(srvFilter) == 0 {
 		srvFilter, err = redis.Strings(conn.Do("SMEMBERS", "trace.services"))
@@ -164,6 +147,6 @@ func (r *Redis) GetDependencies(srvFilter ...string) ([]trace.Dependencies, erro
 }
 
 // Shutdown the storage.
-func (r *Redis) Close() error {
-	return r.connPool.Close()
+func (r *redisStorage) Close() {
+	r.redisSrv.Close()
 }

@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/achilleasa/service-adapters/redis"
 	"github.com/achilleasa/trace"
 	"github.com/achilleasa/trace/storage"
 )
@@ -115,7 +116,7 @@ var (
 	redisDb       = flag.Uint("redis-db", 0, "Redis db number")
 	redisPassword = flag.String("redis-password", "", "Redis password")
 	port          = flag.Int("port", 8080, "The http server port")
-	storageEngine *storage.Redis
+	storageEngine trace.Storage
 )
 
 func main() {
@@ -135,7 +136,7 @@ func main() {
 	flag.Parse()
 
 	log.Printf("Using REDIS storage: %s (using password: %v)\n", *redisEndpoint, *redisPassword != "")
-	storageEngine = storage.NewRedis(*redisEndpoint, *redisPassword, *redisDb, time.Second*10)
+	storageEngine = storage.NewRedis(redis.New(*redisEndpoint, *redisPassword, *redisDb, time.Second*10))
 
 	log.Printf("Listening for incoming connections on port %d\n", *port)
 	http.ListenAndServe(fmt.Sprintf(":%d", *port), newServer(storageEngine))
