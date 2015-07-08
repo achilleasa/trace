@@ -1,10 +1,11 @@
-package trace
+package middleware
 
 import (
 	"os"
 	"time"
 
 	"code.google.com/p/go-uuid/uuid"
+	tracePkg "github.com/achilleasa/trace"
 	"github.com/achilleasa/usrv"
 	"golang.org/x/net/context"
 )
@@ -31,7 +32,7 @@ func init() {
 //
 // This function is designed to emit events in non-blocking mode. If the Collector does
 // not have enough capacity to store a generated TraceEntry then it will be silently dropped.
-func Tracer(collector *Collector) usrv.EndpointOption {
+func Tracer(collector *tracePkg.Collector) usrv.EndpointOption {
 	return func(ep *usrv.Endpoint) error {
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -58,11 +59,11 @@ func Tracer(collector *Collector) usrv.EndpointOption {
 			responseWriter.Header().Set(CtxTraceId, traceId)
 
 			// Trace incoming request. Use a select statement to ensure write is non-blocking.
-			traceEntry := Record{
+			traceEntry := tracePkg.Record{
 				Timestamp:     time.Now(),
 				TraceId:       traceId,
 				CorrelationId: request.CorrelationId,
-				Type:          Request,
+				Type:          tracePkg.Request,
 				From:          request.From,
 				To:            request.To,
 				Host:          hostname,
@@ -84,11 +85,11 @@ func Tracer(collector *Collector) usrv.EndpointOption {
 					errMsg = errVal.(string)
 				}
 
-				traceEntry := Record{
+				traceEntry := tracePkg.Record{
 					Timestamp:     time.Now(),
 					TraceId:       traceId,
 					CorrelationId: request.CorrelationId,
-					Type:          Response,
+					Type:          tracePkg.Response,
 					From:          request.To, // when responding we switch From/To
 					To:            request.From,
 					Host:          hostname,
