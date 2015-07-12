@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"time"
 
 	"log"
 
@@ -14,7 +13,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/achilleasa/service-adapters/redis"
+	"strconv"
+
+	"time"
+
+	"github.com/achilleasa/service-adapters"
+	"github.com/achilleasa/service-adapters/dial"
+	"github.com/achilleasa/service-adapters/etcd"
+	"github.com/achilleasa/service-adapters/service/redis"
 	"github.com/achilleasa/trace"
 	"github.com/achilleasa/trace/storage"
 )
@@ -112,8 +118,9 @@ func (s *server) send(w http.ResponseWriter, payload interface{}) {
 }
 
 var (
+	etcdEndpoints = flag.String("etcd-hosts", "", "Etcd host list. If defined, etcd will be used for retrieving redis configuration")
 	redisEndpoint = flag.String("redis-host", ":6379", "Redis host (including port)")
-	redisDb       = flag.Uint("redis-db", 0, "Redis db number")
+	redisDb       = flag.Int("redis-db", 0, "Redis db number")
 	redisPassword = flag.String("redis-password", "", "Redis password")
 	port          = flag.Int("port", 8080, "The http server port")
 	storageEngine trace.Storage
@@ -135,9 +142,36 @@ func main() {
 
 	flag.Parse()
 
-	log.Printf("Using REDIS storage: %s (using password: %v)\n", *redisEndpoint, *redisPassword != "")
-	storageEngine = storage.NewRedis(redis.New(*redisEndpoint, *redisPassword, *redisDb, time.Second*10))
+	opts := make([]adapters.ServiceOption, 0)
 
-	log.Printf("Listening for incoming connections on port %d\n", *port)
+	opts = append(opts, adapters.DialPolicy(dial.ExpBackoff(10, time.Millisecond)))
+	opts = append(opts, adapters.Logger(log.New(os.Stdout, "", log.LstdFlags)))
+
+	if *etcdEndpoints != "" {
+		opts = append(
+			opts,
+			etcd.Config(etcd.New(*etcdEndpoints), "/config/service/redis"),
+		)
+	} else {
+		opts = append(
+			opts,
+			adapters.Config(
+				map[string]string{
+					"endpoint": *redisEndpoint,
+					"db":       strconv.Itoa(*redisDb),
+					"password": *redisPassword,
+				},
+			),
+		)
+	}
+
+	redisSrv, err := redis.New(opts...)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	storageEngine = storage.NewRedis(redisSrv)
+
+	log.Printf("Listening for incoming connections on port %d; press ctrl+c to exit\n", *port)
 	http.ListenAndServe(fmt.Sprintf(":%d", *port), newServer(storageEngine))
 }
