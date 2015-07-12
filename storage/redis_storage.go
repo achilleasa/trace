@@ -8,7 +8,7 @@ import (
 
 	"sort"
 
-	redisAdapter "github.com/achilleasa/service-adapters/redis"
+	redisAdapter "github.com/achilleasa/service-adapters/service/redis"
 	"github.com/achilleasa/trace"
 	"github.com/garyburd/redigo/redis"
 )
