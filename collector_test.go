@@ -10,7 +10,7 @@ import (
 
 func TestCollector(t *testing.T) {
 	storage := storage.NewMemory()
-	collector := trace.NewCollector(storage, 1000)
+	collector := trace.NewCollector(storage, 1000, time.Hour)
 
 	stored := make(chan struct{})
 	storage.AfterStore = func() {
@@ -41,7 +41,7 @@ func TestCollector(t *testing.T) {
 
 func TestCollectorChannelClose(t *testing.T) {
 	storage := storage.NewMemory()
-	collector := trace.NewCollector(storage, 1000)
+	collector := trace.NewCollector(storage, 1000, time.Hour)
 
 	stored := make(chan struct{})
 	storage.AfterStore = func() {

@@ -18,16 +18,20 @@ type Collector struct {
 
 	// A waitgroup for ensuring that the collector shuts down properly
 	waitGroup sync.WaitGroup
+
+	// A TTL for removing trace entries. A value of 0 indicates no TTL.
+	tracettl time.Duration
 }
 
 // Create a new collector using the supplied storage and allocate a processing queue with depth equal
 // to queueSize. The queueSize parameter should be large enough to handle the rate at which your
 // service emits trace events.
-func NewCollector(storage Storage, queueSize int) *Collector {
+func NewCollector(storage Storage, queueSize int, tracettl time.Duration) *Collector {
 	collector := &Collector{
 		shutdownChan: make(chan struct{}, 1),
 		TraceChan:    make(chan Record, queueSize),
 		storage:      storage,
+		tracettl:     tracettl,
 	}
 
 	collector.start()
@@ -49,7 +53,7 @@ func (c *Collector) start() {
 					return
 				}
 				go func(evt *Record) {
-					c.storage.Store(evt, time.Hour*1)
+					c.storage.Store(evt, c.tracettl)
 				}(&evt)
 			}
 		}
