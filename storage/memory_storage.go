@@ -49,7 +49,17 @@ func (s *Memory) Store(logEntry *trace.Record, ttl time.Duration) error {
 				Dependencies: make([]string, 0),
 			}
 		}
-		s.serviceDeps[logEntry.From].Dependencies = append(s.serviceDeps[logEntry.From].Dependencies, logEntry.To)
+		// Append dependency if new
+		exists = false
+		for _, srvName := range s.serviceDeps[logEntry.From].Dependencies {
+			if srvName == logEntry.To {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			s.serviceDeps[logEntry.From].Dependencies = append(s.serviceDeps[logEntry.From].Dependencies, logEntry.To)
+		}
 	}
 	if s.AfterStore != nil {
 		s.AfterStore()
