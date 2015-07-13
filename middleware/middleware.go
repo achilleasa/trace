@@ -58,8 +58,8 @@ func Tracer(collector *tracePkg.Collector) usrv.EndpointOption {
 			// Inject trace into outgoing message
 			responseWriter.Header().Set(CtxTraceId, traceId)
 
-			// Trace incoming request. Use a select statement to ensure write is non-blocking.
-			traceEntry := tracePkg.Record{
+			// Trace incoming request. This call is non-blocking
+			collector.Add(&tracePkg.Record{
 				Timestamp:     time.Now(),
 				TraceId:       traceId,
 				CorrelationId: request.CorrelationId,
@@ -67,13 +67,7 @@ func Tracer(collector *tracePkg.Collector) usrv.EndpointOption {
 				From:          request.From,
 				To:            request.To,
 				Host:          hostname,
-			}
-			select {
-			case collector.TraceChan <- traceEntry:
-			// trace successfully added to channel
-			default:
-				// channel is full, skip trace
-			}
+			})
 
 			// Trace response when the handler returns
 			defer func(start time.Time) {
@@ -85,7 +79,8 @@ func Tracer(collector *tracePkg.Collector) usrv.EndpointOption {
 					errMsg = errVal.(string)
 				}
 
-				traceEntry := tracePkg.Record{
+				// Trace response. This call is non-blocking
+				collector.Add(&tracePkg.Record{
 					Timestamp:     time.Now(),
 					TraceId:       traceId,
 					CorrelationId: request.CorrelationId,
@@ -95,14 +90,7 @@ func Tracer(collector *tracePkg.Collector) usrv.EndpointOption {
 					Host:          hostname,
 					Duration:      time.Since(start).Nanoseconds(),
 					Error:         errMsg,
-				}
-
-				select {
-				case collector.TraceChan <- traceEntry:
-				// trace successfully added to channel
-				default:
-					// channel is full, skip trace
-				}
+				})
 			}(time.Now())
 
 			// Invoke the original handler

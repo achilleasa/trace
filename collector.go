@@ -1,26 +1,20 @@
 package trace
 
-import (
-	"time"
-
-	"sync"
-)
+import "time"
 
 type Collector struct {
-	// A channel for triggering a collector shutdown
-	shutdownChan chan struct{}
-
-	// A buffered channel for processing trace data
-	TraceChan chan Record
+	// A set of tokens for bounding the number of concurrent trace records that can be handled
+	tokens chan struct{}
 
 	// A storage engine for the processed data
 	storage Storage
 
-	// A waitgroup for ensuring that the collector shuts down properly
-	waitGroup sync.WaitGroup
-
 	// A TTL for removing trace entries. A value of 0 indicates no TTL.
 	tracettl time.Duration
+
+	// This method is invoked when a trace is received. This method is
+	// stubbed when running unit tests.
+	OnTraceAdded func(rec *Record)
 }
 
 // Create a new collector using the supplied storage and allocate a processing queue with depth equal
@@ -28,45 +22,37 @@ type Collector struct {
 // service emits trace events.
 func NewCollector(storage Storage, queueSize int, tracettl time.Duration) *Collector {
 	collector := &Collector{
-		shutdownChan: make(chan struct{}, 1),
-		TraceChan:    make(chan Record, queueSize),
-		storage:      storage,
-		tracettl:     tracettl,
+		tokens:   make(chan struct{}, queueSize),
+		storage:  storage,
+		tracettl: tracettl,
 	}
 
-	collector.start()
+	// Add initial tokens
+	for i := 0; i < queueSize; i++ {
+		collector.tokens <- struct{}{}
+	}
 
 	return collector
 }
 
-// Start event capturing loop.
-func (c *Collector) start() {
-	c.waitGroup.Add(1)
-	go func() {
-		defer c.waitGroup.Done()
-		for {
-			select {
-			case <-c.shutdownChan:
-				return
-			case evt, ok := <-c.TraceChan:
-				if !ok {
-					return
-				}
-				go func(evt *Record) {
-					c.storage.Store(evt, c.tracettl)
-				}(&evt)
+// Append a trace entry. If the collector trace queue is full then the entry will be
+// discarded. The method returns true if the trace was successfully enqueued, false otherwise.
+func (c *Collector) Add(rec *Record) bool {
+	select {
+	case token := <-c.tokens:
+		go func() {
+			defer func() {
+				c.tokens <- token
+			}()
+
+			c.storage.Store(rec, c.tracettl)
+			if c.OnTraceAdded != nil {
+				c.OnTraceAdded(rec)
 			}
-		}
-	}()
-}
-
-// Shutdown the collector.
-func (c *Collector) Close() {
-	if c.shutdownChan == nil {
-		return
+		}()
+		return true
+	default:
+		// channel is full, discard trace
+		return false
 	}
-
-	c.shutdownChan <- struct{}{}
-	c.waitGroup.Wait()
-	c.shutdownChan = nil
 }

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	"time"
+
 	tracePkg "github.com/achilleasa/trace"
 	"github.com/achilleasa/trace/storage"
 	"github.com/achilleasa/usrv"
@@ -22,9 +24,7 @@ func TestTracerWithoutTraceId(t *testing.T) {
 		processedChan <- struct{}{}
 	}
 
-	collector := tracePkg.NewCollector(storage, 1000)
-	defer collector.Close()
-
+	collector := tracePkg.NewCollector(storage, 1000, time.Hour)
 	ep := usrv.Endpoint{
 		Name: "traceTest",
 		Handler: usrv.HandlerFunc(func(ctx context.Context, rw usrv.ResponseWriter, req *usrv.Message) {
@@ -121,9 +121,7 @@ func TestTracerWithExistingTraceId(t *testing.T) {
 		processedChan <- struct{}{}
 	}
 
-	collector := tracePkg.NewCollector(storage, 1000)
-	defer collector.Close()
-
+	collector := tracePkg.NewCollector(storage, 1000, time.Hour)
 	ep := usrv.Endpoint{
 		Name: "traceTest",
 		Handler: usrv.HandlerFunc(func(ctx context.Context, rw usrv.ResponseWriter, req *usrv.Message) {
@@ -226,9 +224,7 @@ func TestTracerWithError(t *testing.T) {
 		processedChan <- struct{}{}
 	}
 
-	collector := tracePkg.NewCollector(storage, 1000)
-	defer collector.Close()
-
+	collector := tracePkg.NewCollector(storage, 1000, time.Hour)
 	ep := usrv.Endpoint{
 		Name: "traceTest",
 		Handler: usrv.HandlerFunc(func(ctx context.Context, rw usrv.ResponseWriter, req *usrv.Message) {
@@ -293,44 +289,3 @@ func TestTracerWithError(t *testing.T) {
 	}
 
 }
-
-//
-//func TestTracerNonBlockingMode(t *testing.T) {
-//	ep := usrv.Endpoint{
-//		Name: "traceTest",
-//		Handler: usrv.HandlerFunc(func(ctx context.Context, rw usrv.tracePkg.ResponseWriter, req *usrv.Message) {
-//			rw.WriteError(errors.New("I cannot allow you to do that Dave"))
-//		}),
-//	}
-//
-//	var err error
-//
-//	traceChan := make(chan TraceEntry)
-//	err = Tracer(traceChan)(&ep)
-//	if err != nil {
-//		t.Fatalf("Error applying Tracer() to endpoint: %v", err)
-//	}
-//
-//	msg := &usrv.Message{
-//		From:          "sender",
-//		To:            "recipient",
-//		CorrelationId: "123",
-//	}
-//
-//	// Send request
-//	done := make(chan struct{})
-//	go func() {
-//		w := usrvtest.NewRecorder()
-//		ep.Handler.Serve(context.Background(), w, msg)
-//
-//		done <- struct{}{}
-//	}()
-//
-//	// We used a non-buffered channel so that the middleware will block as
-//	// noone is reading from it. We expect the middleware to drop the log
-//	select {
-//	case <-done:
-//	case <-time.After(time.Second * 1):
-//		t.Fatalf("Expected Tracer() middleware to drop logs as traceChan cannot be written to without blocking")
-//	}
-//}

@@ -17,9 +17,7 @@ type Memory struct {
 	traces      map[string]trace.Trace
 	services    map[string]string
 	serviceDeps map[string]*trace.Dependencies
-
-	// A function invoked after a log entry is stored.
-	AfterStore func()
+	AfterStore  func()
 }
 
 func NewMemory() *Memory {
@@ -27,7 +25,6 @@ func NewMemory() *Memory {
 		traces:      make(map[string]trace.Trace),
 		services:    make(map[string]string),
 		serviceDeps: make(map[string]*trace.Dependencies),
-		AfterStore:  func() {},
 	}
 }
 
@@ -54,8 +51,9 @@ func (s *Memory) Store(logEntry *trace.Record, ttl time.Duration) error {
 		}
 		s.serviceDeps[logEntry.From].Dependencies = append(s.serviceDeps[logEntry.From].Dependencies, logEntry.To)
 	}
-
-	s.AfterStore()
+	if s.AfterStore != nil {
+		s.AfterStore()
+	}
 	return nil
 }
 
