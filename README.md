@@ -141,7 +141,7 @@ The diagram:
 - includes roundtrip times for each call and for the entire request.
 - indicates errors (timeouts e.t.c) with a different line type.
 
-![request sequence diagram](https://drive.google.com/uc?export=&id=0Bz9Vk3E_v2HBQ1JDU2U2TFNIb2s)
+![request sequence diagram](https://drive.google.com/uc?export=&id=0Bz9Vk3E_v2HBa1hyS09VNUlGdzg)
 
 ## Service dependency visualization
 
@@ -156,13 +156,13 @@ The service dependency chart is an interactive circular D3 plot that uses [Danny
 - services which directly depend on the hovered service in red
 - direct dependencies of the hovered service in green
 
-![dependency chart](https://drive.google.com/uc?export=&id=0Bz9Vk3E_v2HBTUlGbUpid3VqUlE)
+![dependency chart](https://drive.google.com/uc?export=&id=0Bz9Vk3E_v2HBZTMyN0tyWG1OLWM)
 
 ### Direct and indirect dependencies of a service
 
 By clicking on a dependency chart service, the view will switch to a filtered mode displaying a tree-like view with the direct and indirect dependencies of the selected service.
 
-![dependency tree](https://drive.google.com/uc?export=&id=0Bz9Vk3E_v2HBZU1QajVTeVhMTjg)
+![dependency tree](https://drive.google.com/uc?export=&id=0Bz9Vk3E_v2HBSmdtSFVYRUNxVkk)
 
 # License
 
