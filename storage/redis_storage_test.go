@@ -13,7 +13,8 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/achilleasa/service-adapters/redis"
+	"github.com/achilleasa/service-adapters"
+	"github.com/achilleasa/service-adapters/service/redis"
 	"github.com/achilleasa/trace"
 )
 
@@ -30,7 +31,10 @@ func init() {
 }
 
 func TestRedisStorage(t *testing.T) {
-	redisSrv := redis.New(redisEndpoint, "", 0, time.Second*10)
+	redisSrv, err := redis.New(adapters.Config(map[string]string{"endpoint": redisEndpoint}))
+	if err != nil {
+		t.Fatalf("Error creating redis service: %v", err)
+	}
 	storage := NewRedis(redisSrv)
 	defer storage.Close()
 
