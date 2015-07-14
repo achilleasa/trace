@@ -15,6 +15,10 @@ import (
 
 func TestMemoryStorage(t *testing.T) {
 	storage := NewMemory()
+	afterStoreCalled := false
+	storage.AfterStore = func() {
+		afterStoreCalled = true
+	}
 	defer storage.Close()
 
 	now := time.Now()
@@ -63,6 +67,16 @@ func TestMemoryStorage(t *testing.T) {
 		t.Fatalf("Expected retrieved trace to be equal to %v; got %v", sortedDataSet, traceLog)
 	}
 
+	// Insert a new entry with different trace id but similar From & To to ensure that we filter out duplicate dependencies
+	err = storage.Store(
+		&trace.Record{Type: trace.Request, From: "com.service2", To: "com.service3", Timestamp: now.Add(time.Second * 3), TraceId: "foo-111"},
+		ttl,
+	)
+
+	if err != nil {
+		t.Fatalf("Error while storing entry #0: %v", err)
+	}
+
 	// Get dependencies
 	depTests := []trace.Dependencies{
 		trace.Dependencies{Service: "com.service1", Dependencies: []string{"com.service2"}},
@@ -100,5 +114,9 @@ func TestMemoryStorage(t *testing.T) {
 	r, _ = json.Marshal(deps)
 	if bytes.Compare(l, r) != 0 {
 		t.Fatalf("Expected dependency set %v; got %v", depTests, deps)
+	}
+
+	if !afterStoreCalled {
+		t.Fatalf("AfterStore callback never invoked")
 	}
 }
