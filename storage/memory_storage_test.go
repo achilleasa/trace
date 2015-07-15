@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/achilleasa/trace"
+	"github.com/achilleasa/usrv-tracer"
 
 	"reflect"
 
@@ -25,15 +25,15 @@ func TestMemoryStorage(t *testing.T) {
 	traceId := "abcd-1234-1234-1234"
 
 	// Shuffled records to simulate appends by different processes
-	dataSet := trace.Trace{
-		trace.Record{Type: trace.Response, From: "com.service3", To: "com.service2", Timestamp: now.Add(time.Second * 3), TraceId: traceId},
-		trace.Record{Type: trace.Request, From: "com.service2", To: "com.service3", Timestamp: now.Add(time.Second * 2), TraceId: traceId},
-		trace.Record{Type: trace.Response, From: "com.service2", To: "com.service1", Timestamp: now.Add(time.Second * 4), TraceId: traceId},
-		trace.Record{Type: trace.Request, From: "com.service1", To: "com.service2", Timestamp: now.Add(time.Second * 1), TraceId: traceId},
+	dataSet := tracer.Trace{
+		tracer.Record{Type: tracer.Response, From: "com.service3", To: "com.service2", Timestamp: now.Add(time.Second * 3), TraceId: traceId},
+		tracer.Record{Type: tracer.Request, From: "com.service2", To: "com.service3", Timestamp: now.Add(time.Second * 2), TraceId: traceId},
+		tracer.Record{Type: tracer.Response, From: "com.service2", To: "com.service1", Timestamp: now.Add(time.Second * 4), TraceId: traceId},
+		tracer.Record{Type: tracer.Request, From: "com.service1", To: "com.service2", Timestamp: now.Add(time.Second * 1), TraceId: traceId},
 	}
 
 	// Generate the final sorted set that we will use for comparisons
-	sortedDataSet := make(trace.Trace, len(dataSet))
+	sortedDataSet := make(tracer.Trace, len(dataSet))
 	copy(sortedDataSet, dataSet)
 	sort.Sort(sortedDataSet)
 
@@ -69,7 +69,7 @@ func TestMemoryStorage(t *testing.T) {
 
 	// Insert a new entry with different trace id but similar From & To to ensure that we filter out duplicate dependencies
 	err = storage.Store(
-		&trace.Record{Type: trace.Request, From: "com.service2", To: "com.service3", Timestamp: now.Add(time.Second * 3), TraceId: "foo-111"},
+		&tracer.Record{Type: tracer.Request, From: "com.service2", To: "com.service3", Timestamp: now.Add(time.Second * 3), TraceId: "foo-111"},
 		ttl,
 	)
 
@@ -78,10 +78,10 @@ func TestMemoryStorage(t *testing.T) {
 	}
 
 	// Get dependencies
-	depTests := []trace.Dependencies{
-		trace.Dependencies{Service: "com.service1", Dependencies: []string{"com.service2"}},
-		trace.Dependencies{Service: "com.service2", Dependencies: []string{"com.service3"}},
-		trace.Dependencies{Service: "com.service3", Dependencies: []string{}},
+	depTests := []tracer.Dependencies{
+		tracer.Dependencies{Service: "com.service1", Dependencies: []string{"com.service2"}},
+		tracer.Dependencies{Service: "com.service2", Dependencies: []string{"com.service3"}},
+		tracer.Dependencies{Service: "com.service3", Dependencies: []string{}},
 	}
 
 	// Fetch using filters

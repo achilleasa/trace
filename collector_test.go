@@ -1,19 +1,19 @@
-package trace_test
+package tracer_test
 
 import (
 	"testing"
 	"time"
 
-	"github.com/achilleasa/trace"
-	"github.com/achilleasa/trace/storage"
+	"github.com/achilleasa/usrv-tracer"
+	"github.com/achilleasa/usrv-tracer/storage"
 )
 
 func TestCollector(t *testing.T) {
 	storage := storage.NewMemory()
-	collector := trace.NewCollector(storage, 1000, time.Hour)
+	collector := tracer.NewCollector(storage, 1000, time.Hour)
 
 	wait := make(chan struct{})
-	collector.OnTraceAdded = func(rec *trace.Record) {
+	collector.OnTraceAdded = func(rec *tracer.Record) {
 		// Signal the test we are handling the record
 		wait <- struct{}{}
 	}
@@ -21,8 +21,8 @@ func TestCollector(t *testing.T) {
 	// emit trace
 	now := time.Now()
 	traceId := "abcd-1234-1234-1234"
-	collector.Add(&trace.Record{
-		Type:      trace.Response,
+	collector.Add(&tracer.Record{
+		Type:      tracer.Response,
 		From:      "com.service3",
 		To:        "com.service2",
 		Timestamp: now,
@@ -39,10 +39,10 @@ func TestCollector(t *testing.T) {
 
 func TestCollectorChannelClose(t *testing.T) {
 	storage := storage.NewMemory()
-	collector := trace.NewCollector(storage, 1000, time.Hour)
+	collector := tracer.NewCollector(storage, 1000, time.Hour)
 
 	wait := make(chan struct{})
-	collector.OnTraceAdded = func(rec *trace.Record) {
+	collector.OnTraceAdded = func(rec *tracer.Record) {
 		// Signal the test we are handling the record
 		wait <- struct{}{}
 	}
@@ -50,8 +50,8 @@ func TestCollectorChannelClose(t *testing.T) {
 	// emit trace
 	now := time.Now()
 	traceId := "abcd-1234-1234-1234"
-	collector.Add(&trace.Record{
-		Type:      trace.Response,
+	collector.Add(&tracer.Record{
+		Type:      tracer.Response,
 		From:      "com.service3",
 		To:        "com.service2",
 		Timestamp: now,
@@ -68,10 +68,10 @@ func TestCollectorChannelClose(t *testing.T) {
 
 func TestCollectorQueueOverrun(t *testing.T) {
 	storage := storage.NewMemory()
-	collector := trace.NewCollector(storage, 1, time.Hour)
+	collector := tracer.NewCollector(storage, 1, time.Hour)
 
 	wait := make(chan struct{})
-	collector.OnTraceAdded = func(rec *trace.Record) {
+	collector.OnTraceAdded = func(rec *tracer.Record) {
 		// Signal the test we are handling the record
 		wait <- struct{}{}
 
@@ -82,8 +82,8 @@ func TestCollectorQueueOverrun(t *testing.T) {
 	// emit trace
 	now := time.Now()
 	traceId := "abcd-1234-1234-1234"
-	rec := &trace.Record{
-		Type:      trace.Response,
+	rec := &tracer.Record{
+		Type:      tracer.Response,
 		From:      "com.service3",
 		To:        "com.service2",
 		Timestamp: now,

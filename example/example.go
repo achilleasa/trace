@@ -9,10 +9,10 @@ import (
 
 	"math/rand"
 
-	"github.com/achilleasa/trace"
-	"github.com/achilleasa/trace/middleware"
-	"github.com/achilleasa/trace/storage"
 	"github.com/achilleasa/usrv"
+	"github.com/achilleasa/usrv-tracer"
+	"github.com/achilleasa/usrv-tracer/middleware"
+	"github.com/achilleasa/usrv-tracer/storage"
 	"github.com/achilleasa/usrv/usrvtest"
 	"golang.org/x/net/context"
 )
@@ -94,7 +94,7 @@ func (adder *Adder) Add4(a, b, c, d int) (int, string) {
 	return a, res.Message.Headers.Get(middleware.CtxTraceId).(string)
 }
 
-func NewAdder(transp usrv.Transport, collector *trace.Collector) *Adder {
+func NewAdder(transp usrv.Transport, collector *tracer.Collector) *Adder {
 	server, err := usrv.NewServer(transp)
 	if err != nil {
 		panic(err)
@@ -124,7 +124,7 @@ func NewAdder(transp usrv.Transport, collector *trace.Collector) *Adder {
 func main() {
 	// Setup collector
 	storage := storage.NewMemory()
-	collector := trace.NewCollector(storage, 100, 0)
+	collector := tracer.NewCollector(storage, 100, 0)
 
 	// Use in-memory transport for this demo so we do not need to use rabbitmq
 	transp := usrvtest.NewTransport()

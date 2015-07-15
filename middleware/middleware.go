@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"code.google.com/p/go-uuid/uuid"
-	tracePkg "github.com/achilleasa/trace"
+	tracePkg "github.com/achilleasa/usrv-tracer"
 	"github.com/achilleasa/usrv"
 	"golang.org/x/net/context"
 )

@@ -6,8 +6,8 @@ import (
 
 	"time"
 
-	tracePkg "github.com/achilleasa/trace"
-	"github.com/achilleasa/trace/storage"
+	tracePkg "github.com/achilleasa/usrv-tracer"
+	"github.com/achilleasa/usrv-tracer/storage"
 	"github.com/achilleasa/usrv"
 	"github.com/achilleasa/usrv/usrvtest"
 	"golang.org/x/net/context"

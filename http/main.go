@@ -17,20 +17,20 @@ import (
 
 	"time"
 
-	"github.com/achilleasa/service-adapters"
-	"github.com/achilleasa/service-adapters/dial"
-	"github.com/achilleasa/service-adapters/etcd"
-	"github.com/achilleasa/service-adapters/service/redis"
-	"github.com/achilleasa/trace"
-	"github.com/achilleasa/trace/storage"
+	"github.com/achilleasa/usrv-service-adapters"
+	"github.com/achilleasa/usrv-service-adapters/dial"
+	"github.com/achilleasa/usrv-service-adapters/etcd"
+	"github.com/achilleasa/usrv-service-adapters/service/redis"
+	"github.com/achilleasa/usrv-tracer"
+	"github.com/achilleasa/usrv-tracer/storage"
 )
 
 type server struct {
-	storageEngine trace.Storage
+	storageEngine tracer.Storage
 }
 
 // Create a new http server for reporting trace and dependecy details.
-func newServer(storage trace.Storage) *server {
+func newServer(storage tracer.Storage) *server {
 	return &server{
 		storageEngine: storage,
 	}
@@ -123,7 +123,7 @@ var (
 	redisDb       = flag.Int("redis-db", 0, "Redis db number")
 	redisPassword = flag.String("redis-password", "", "Redis password")
 	port          = flag.Int("port", 8080, "The http server port")
-	storageEngine trace.Storage
+	storageEngine tracer.Storage
 )
 
 func main() {

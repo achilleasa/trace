@@ -8,8 +8,8 @@ import (
 
 	"sort"
 
-	redisAdapter "github.com/achilleasa/service-adapters/service/redis"
-	"github.com/achilleasa/trace"
+	redisAdapter "github.com/achilleasa/usrv-service-adapters/service/redis"
+	"github.com/achilleasa/usrv-tracer"
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -30,7 +30,7 @@ func NewRedis(redisSrv *redisAdapter.Redis) *redisStorage {
 
 // Store a trace entry and set a TTL on it. If the ttl is 0 then the
 // trace record will never expire. Implements the Storage interface.
-func (r *redisStorage) Store(logEntry *trace.Record, ttl time.Duration) error {
+func (r *redisStorage) Store(logEntry *tracer.Record, ttl time.Duration) error {
 	json, err := json.Marshal(logEntry)
 	if err != nil {
 		return err
@@ -46,19 +46,19 @@ func (r *redisStorage) Store(logEntry *trace.Record, ttl time.Duration) error {
 
 	// Append log entry to a list that shares the same traceId
 	// and set a TTL
-	traceKey := fmt.Sprintf("trace.%s", logEntry.TraceId)
+	traceKey := fmt.Sprintf("tracer.%s", logEntry.TraceId)
 	conn.Send("LPUSH", traceKey, json)
 	if ttl > time.Second {
 		conn.Send("EXPIRE", traceKey, ttl.Seconds())
 	}
 
 	// Add logEntry.From to the set of known services
-	conn.Send("SADD", "trace.services", logEntry.From)
+	conn.Send("SADD", "tracer.services", logEntry.From)
 
 	// If this is an outgoing request, add the destination to the dependency set
 	// for the origin
-	if logEntry.Type == trace.Request {
-		conn.Send("SADD", fmt.Sprintf("trace.%s.deps", logEntry.From), logEntry.To)
+	if logEntry.Type == tracer.Request {
+		conn.Send("SADD", fmt.Sprintf("tracer.%s.deps", logEntry.From), logEntry.To)
 	}
 
 	// Exec pipeline
@@ -67,7 +67,7 @@ func (r *redisStorage) Store(logEntry *trace.Record, ttl time.Duration) error {
 }
 
 // Fetch a set of time-ordered trace entries with the given trace-id.
-func (r *redisStorage) GetTrace(traceId string) (trace.Trace, error) {
+func (r *redisStorage) GetTrace(traceId string) (tracer.Trace, error) {
 
 	conn, err := r.redisSrv.GetConnection()
 	if err != nil {
@@ -76,7 +76,7 @@ func (r *redisStorage) GetTrace(traceId string) (trace.Trace, error) {
 	defer conn.Close()
 
 	// Get the number of records
-	traceKey := fmt.Sprintf("trace.%s", traceId)
+	traceKey := fmt.Sprintf("tracer.%s", traceId)
 	len, err := redis.Int(conn.Do("LLEN", traceKey))
 	if err != nil {
 		return nil, err
@@ -89,9 +89,9 @@ func (r *redisStorage) GetTrace(traceId string) (trace.Trace, error) {
 	}
 
 	// Unmarshal raw data
-	traceLog := make(trace.Trace, len)
+	traceLog := make(tracer.Trace, len)
 	for index, rawRow := range rawRows {
-		entry := trace.Record{}
+		entry := tracer.Record{}
 		err = json.Unmarshal([]byte(rawRow), &entry)
 		if err != nil {
 			return nil, err
@@ -107,7 +107,7 @@ func (r *redisStorage) GetTrace(traceId string) (trace.Trace, error) {
 
 // Get service dependencies optionally filtered by a set of service names. If no filters are
 // specified then the response will include all services currently known to the storage.
-func (r *redisStorage) GetDependencies(srvFilter ...string) ([]trace.Dependencies, error) {
+func (r *redisStorage) GetDependencies(srvFilter ...string) ([]tracer.Dependencies, error) {
 	conn, err := r.redisSrv.GetConnection()
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (r *redisStorage) GetDependencies(srvFilter ...string) ([]trace.Dependencie
 	defer conn.Close()
 
 	if len(srvFilter) == 0 {
-		srvFilter, err = redis.Strings(conn.Do("SMEMBERS", "trace.services"))
+		srvFilter, err = redis.Strings(conn.Do("SMEMBERS", "tracer.services"))
 		if err != nil {
 			return nil, err
 		}
@@ -125,7 +125,7 @@ func (r *redisStorage) GetDependencies(srvFilter ...string) ([]trace.Dependencie
 	// Fetch deps in a single batch
 	conn.Send("MULTI")
 	for _, serviceName := range srvFilter {
-		conn.Send("SMEMBERS", fmt.Sprintf("trace.%s.deps", serviceName))
+		conn.Send("SMEMBERS", fmt.Sprintf("tracer.%s.deps", serviceName))
 	}
 	replies, err := redis.Values(conn.Do("EXEC"))
 	if err != nil {
@@ -134,10 +134,10 @@ func (r *redisStorage) GetDependencies(srvFilter ...string) ([]trace.Dependencie
 
 	// Assemble deps
 	replyCount := len(srvFilter)
-	serviceDeps := make([]trace.Dependencies, replyCount)
+	serviceDeps := make([]tracer.Dependencies, replyCount)
 	for index := 0; index < replyCount; index++ {
 		deps, _ := redis.Strings(replies[index], nil)
-		serviceDeps[index] = trace.Dependencies{
+		serviceDeps[index] = tracer.Dependencies{
 			Service:      srvFilter[index],
 			Dependencies: deps,
 		}

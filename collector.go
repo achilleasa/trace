@@ -1,4 +1,4 @@
-package trace
+package tracer
 
 import "time"
 
@@ -6,8 +6,8 @@ type Collector struct {
 	// A set of tokens for bounding the number of concurrent trace records that can be handled
 	tokens chan struct{}
 
-	// A storage engine for the processed data
-	storage Storage
+	// The storage engine for the processed data
+	Storage Storage
 
 	// A TTL for removing trace entries. A value of 0 indicates no TTL.
 	tracettl time.Duration
@@ -23,7 +23,7 @@ type Collector struct {
 func NewCollector(storage Storage, queueSize int, tracettl time.Duration) *Collector {
 	collector := &Collector{
 		tokens:   make(chan struct{}, queueSize),
-		storage:  storage,
+		Storage:  storage,
 		tracettl: tracettl,
 	}
 
@@ -45,7 +45,7 @@ func (c *Collector) Add(rec *Record) bool {
 				c.tokens <- token
 			}()
 
-			c.storage.Store(rec, c.tracettl)
+			c.Storage.Store(rec, c.tracettl)
 			if c.OnTraceAdded != nil {
 				c.OnTraceAdded(rec)
 			}

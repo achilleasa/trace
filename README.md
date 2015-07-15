@@ -1,19 +1,19 @@
-# trace
-[![Build Status](https://drone.io/github.com/achilleasa/trace/status.png)](https://drone.io/github.com/achilleasa/trace/latest)
-[![codecov.io](http://codecov.io/github/achilleasa/usrv/coverage.svg?branch=master)](http://codecov.io/github/achilleasa/trace?branch=master)
+# usrv-tracer
+[![Build Status](https://drone.io/github.com/achilleasa/usrv-tracer/status.png)](https://drone.io/github.com/achilleasa/usrv-tracer/latest)
+[![codecov.io](http://codecov.io/github/achilleasa/usrv-tracer/coverage.svg?branch=master)](http://codecov.io/github/achilleasa/usrv-tracer?branch=master)
 
 Microservice request/response trace collection and visualization.
 
-The trace package provides an asynchronous request trace collection and storage framework. The collection 
+The usrv-tracer package provides an asynchronous request trace collection and storage framework. The collection
 framework may be used standalone or together with the [usrv](https://github.com/achilleasa/usrv) package
-with the provided [middleware](https://github.com/achilleasa/trace/tree/master/middleware).
+with the provided [middleware](https://github.com/achilleasa/usrv-tracer/tree/master/middleware).
 
 # Dependencies
 
 When using redis as the trace storage engine:
 
 ```
-go get github.com/achilleasa/service-adapters
+go get github.com/achilleasa/usrv-service-adapters
 go get github.com/garyburd/redigo/redis
 ```
 
@@ -41,7 +41,7 @@ by the collector.
 
 To ensure non-blocking semantics, the collector will `discard` incoming trace records if the
 processing queue is full. Consequently, the application should tune the queue size parameter depending on the
-estimated trace record througput.
+estimated trace record throughput.
 
 ## Trace TTL
 
@@ -65,7 +65,7 @@ The memory storage engine is mainly used for testing. It stores data in memory a
 
 ### Other storage engines
 
-You can create storage engines for your favorite backend by implementing the [Storage](https://github.com/achilleasa/trace/blob/master/storage.go) interface.
+You can create storage engines for your favorite backend by implementing the [Storage](https://github.com/achilleasa/usrv-tracer/blob/master/storage.go) interface.
 
 # Usrv request tracer middleware
 
@@ -82,7 +82,7 @@ When the `middleware` sub-package is included it will, as a side-effect, patch a
 `RequestWithTimeout` methods.
 
 A basic example (with crude serialization and no error checking) that illustrates how the tracer middleware works
-is available [here](https://github.com/achilleasa/trace/blob/master/example/example.go). The example declares
+is available [here](https://github.com/achilleasa/usrv-tracer/blob/master/example/example.go). The example declares
 two microservice endpoints:
 - the `add/2` service that adds 2 numbers `a, b` and returns the result `a + b`
 - the `add/4` service that adds 4 numbers `a, b, c, d` by invoking (in parallel) `add/2` for `a, b` and `c, d` and then `add/2` again on the partial sums to calculate the total sum
@@ -166,4 +166,4 @@ By clicking on a dependency chart service, the view will switch to a filtered mo
 
 # License
 
-trace is distributed under the [MIT license](https://github.com/achilleasa/trace/blob/master/LICENSE).
+trace is distributed under the [MIT license](https://github.com/achilleasa/usrv-tracer/blob/master/LICENSE).
