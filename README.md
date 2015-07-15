@@ -166,4 +166,4 @@ By clicking on a dependency chart service, the view will switch to a filtered mo
 
 # License
 
-trace is distributed under the [MIT license](https://github.com/achilleasa/usrv-tracer/blob/master/LICENSE).
+usr-tracer is distributed under the [MIT license](https://github.com/achilleasa/usrv-tracer/blob/master/LICENSE).
