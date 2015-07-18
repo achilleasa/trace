@@ -19,7 +19,7 @@ import (
 
 	"github.com/achilleasa/usrv-service-adapters"
 	"github.com/achilleasa/usrv-service-adapters/dial"
-	"github.com/achilleasa/usrv-service-adapters/etcd"
+	"github.com/achilleasa/usrv-service-adapters/service/etcd"
 	"github.com/achilleasa/usrv-service-adapters/service/redis"
 	"github.com/achilleasa/usrv-tracer"
 	"github.com/achilleasa/usrv-tracer/storage"
@@ -29,11 +29,11 @@ type server struct {
 	storageEngine tracer.Storage
 }
 
-// Create a new http server for reporting trace and dependecy details.
-func newServer(storage tracer.Storage) *server {
+// Create a new http server for reporting trace and dependency details.
+func newServer(storage tracer.Storage) (*server, error) {
 	return &server{
 		storageEngine: storage,
-	}
+	}, storage.Dial()
 }
 
 // The top-level router for the http server.
@@ -118,7 +118,7 @@ func (s *server) send(w http.ResponseWriter, payload interface{}) {
 }
 
 var (
-	etcdEndpoints = flag.String("etcd-hosts", "", "Etcd host list. If defined, etcd will be used for retrieving redis configuration")
+	etcdEndpoints = flag.String("etcd-hosts", "", "Etcd host list. If defined, etcd will be used for retrieving redis configuration. You may also specify etcd hosts using the ETCD_HOSTS env var")
 	redisEndpoint = flag.String("redis-host", ":6379", "Redis host (including port)")
 	redisDb       = flag.Int("redis-db", 0, "Redis db number")
 	redisPassword = flag.String("redis-password", "", "Redis password")
@@ -140,18 +140,34 @@ func main() {
 		}
 	}()
 
+	logger := log.New(os.Stdout, "", log.LstdFlags)
+
+	// Configure backend adapter
 	flag.Parse()
 
-	opts := make([]adapters.ServiceOption, 0)
-
-	opts = append(opts, adapters.DialPolicy(dial.ExpBackoff(10, time.Millisecond)))
-	opts = append(opts, adapters.Logger(log.New(os.Stdout, "", log.LstdFlags)))
-
+	// Check for etcd config. If present dial etcd adapter
+	// If no etcd cmdline arg is set, also check for ETCD_HOSTS env var
+	if *etcdEndpoints == "" {
+		*etcdEndpoints = os.Getenv("ETCD_HOSTS")
+	}
 	if *etcdEndpoints != "" {
-		opts = append(
-			opts,
-			etcd.Config(etcd.New(*etcdEndpoints), "/config/service/redis"),
+		etcd.Adapter.SetOptions(
+			adapters.Logger(logger),
+			adapters.Config(map[string]string{"hosts": *etcdEndpoints}),
 		)
+
+		err := etcd.Adapter.Dial()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// Set redis adapter options
+	opts := make([]adapters.ServiceOption, 0)
+	opts = append(opts, adapters.Logger(logger))
+	opts = append(opts, adapters.DialPolicy(dial.ExpBackoff(10, time.Millisecond)))
+	if *etcdEndpoints != "" {
+		opts = append(opts, etcd.AutoConf("/config/service/redis"))
 	} else {
 		opts = append(
 			opts,
@@ -164,14 +180,16 @@ func main() {
 			),
 		)
 	}
-
-	redisSrv, err := redis.New(opts...)
+	err := redis.Adapter.SetOptions(opts...)
 	if err != nil {
 		log.Panic(err)
 	}
 
-	storageEngine = storage.NewRedis(redisSrv)
+	logger.Printf("[UI-SRV] Listening for incoming connections on port %d; press ctrl+c to exit\n", *port)
+	srv, err := newServer(storage.Redis)
+	if err != nil {
+		log.Panic(err)
+	}
 
-	log.Printf("Listening for incoming connections on port %d; press ctrl+c to exit\n", *port)
-	http.ListenAndServe(fmt.Sprintf(":%d", *port), newServer(storageEngine))
+	http.ListenAndServe(fmt.Sprintf(":%d", *port), srv)
 }
