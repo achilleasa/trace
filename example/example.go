@@ -123,10 +123,12 @@ func NewAdder(transp usrv.Transport, collector *tracer.Collector) *Adder {
 
 func main() {
 	// Setup collector
-	storage := storage.NewMemory()
-	collector := tracer.NewCollector(storage, 100, 0)
+	collector, err := tracer.NewCollector(storage.Memory, 100, 0)
+	if err != nil {
+		panic(err)
+	}
 
-	// Use in-memory transport for this demo so we do not need to use rabbitmq
+	// Use in-memory transport for this demo
 	transp := usrvtest.NewTransport()
 	defer transp.Close()
 
@@ -146,7 +148,7 @@ func main() {
 	fmt.Printf("[%s] Sum: 1 + 3 + 5 + 7 = %d\n", traceId, sum)
 
 	// Get trace log from storage
-	traceLog, err := storage.GetTrace(traceId)
+	traceLog, err := storage.Memory.GetTrace(traceId)
 	if err != nil {
 		panic(err)
 	}
@@ -156,7 +158,7 @@ func main() {
 	}
 
 	// Get service dependencies
-	deps, err := storage.GetDependencies()
+	deps, err := storage.Memory.GetDependencies()
 	if err != nil {
 		panic(err)
 	}
