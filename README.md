@@ -117,14 +117,14 @@ figuring out service dependencies.
 
 To start the web app with default settings (redis at localhot:6379 and app on http://localhost:8080) use the following command:
 
-`go run http/main.go`
+`go run http/ui-server.go`
 
 A list of supported command line arguments is available by invoking the above command with `-h` or `--help`:
 ```
-go run http/main.go -h
+go run http/ui-server.go -h
 
 Usage:
-  -etcd-hosts="": Etcd host list. If defined, etcd will be used for retrieving redis configuration
+  -etcd-hosts="": Etcd host list. If defined, etcd will be used for retrieving redis configuration. You may also specify etcd hosts using the ETCD_HOSTS env var
   -port=8080: The http server port
   -redis-db=0: Redis db number
   -redis-host=":6379": Redis host (including port)
@@ -166,4 +166,4 @@ By clicking on a dependency chart service, the view will switch to a filtered mo
 
 # License
 
-usr-tracer is distributed under the [MIT license](https://github.com/achilleasa/usrv-tracer/blob/master/LICENSE).
+usrv-tracer is distributed under the [MIT license](https://github.com/achilleasa/usrv-tracer/blob/master/LICENSE).
