@@ -9,8 +9,11 @@ import (
 )
 
 func TestCollector(t *testing.T) {
-	storage := storage.NewMemory()
-	collector := tracer.NewCollector(storage, 1000, time.Hour)
+	collector, err := tracer.NewCollector(storage.Memory, 1000, time.Hour)
+	if err != nil {
+		t.Fatalf("Error creating collector: %v", err)
+	}
+	defer collector.Storage.Close()
 
 	wait := make(chan struct{})
 	collector.OnTraceAdded = func(rec *tracer.Record) {
@@ -38,8 +41,11 @@ func TestCollector(t *testing.T) {
 }
 
 func TestCollectorChannelClose(t *testing.T) {
-	storage := storage.NewMemory()
-	collector := tracer.NewCollector(storage, 1000, time.Hour)
+	collector, err := tracer.NewCollector(storage.Memory, 1000, time.Hour)
+	if err != nil {
+		t.Fatalf("Error creating collector: %v", err)
+	}
+	defer collector.Storage.Close()
 
 	wait := make(chan struct{})
 	collector.OnTraceAdded = func(rec *tracer.Record) {
@@ -67,8 +73,11 @@ func TestCollectorChannelClose(t *testing.T) {
 }
 
 func TestCollectorQueueOverrun(t *testing.T) {
-	storage := storage.NewMemory()
-	collector := tracer.NewCollector(storage, 1, time.Hour)
+	collector, err := tracer.NewCollector(storage.Memory, 1, time.Hour)
+	if err != nil {
+		t.Fatalf("Error creating collector: %v", err)
+	}
+	defer collector.Storage.Close()
 
 	wait := make(chan struct{})
 	collector.OnTraceAdded = func(rec *tracer.Record) {

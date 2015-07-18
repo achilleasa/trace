@@ -10,27 +10,41 @@ import (
 	"github.com/achilleasa/usrv-tracer"
 )
 
-// This storage backend stores data in memory. It is meant to be used for running tests.
-// The backend does not support TTL on keys.
-type Memory struct {
-	sync.Mutex
-	traces      map[string]tracer.Trace
-	services    map[string]string
-	serviceDeps map[string]*tracer.Dependencies
-	AfterStore  func()
-}
+// Memory is a singleton instance of a memory-backed storage service
+var Memory *memoryStorage
 
-func NewMemory() *Memory {
-	return &Memory{
+// Initialize the service using default values
+func init() {
+	Memory = &memoryStorage{
 		traces:      make(map[string]tracer.Trace),
 		services:    make(map[string]string),
 		serviceDeps: make(map[string]*tracer.Dependencies),
 	}
 }
 
+// This storage backend stores data in memory. It is meant to be used for running tests.
+// The backend does not support TTL on keys.
+type memoryStorage struct {
+	sync.Mutex
+	traces      map[string]tracer.Trace
+	services    map[string]string
+	serviceDeps map[string]*tracer.Dependencies
+	afterStore  func()
+}
+
+// Dial the storage.
+func (s *memoryStorage) Dial() error {
+	return nil
+}
+
+// Set a callback to be invoked after storing an entry
+func (s *memoryStorage) AfterStore(callback func()) {
+	s.afterStore = callback
+}
+
 // Store a trace entry and set a TTL on it. If the ttl is 0 then the
 // trace record will never expire. Implements the Storage interface.
-func (s *Memory) Store(logEntry *tracer.Record, ttl time.Duration) error {
+func (s *memoryStorage) Store(logEntry *tracer.Record, ttl time.Duration) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -61,15 +75,15 @@ func (s *Memory) Store(logEntry *tracer.Record, ttl time.Duration) error {
 			s.serviceDeps[logEntry.From].Dependencies = append(s.serviceDeps[logEntry.From].Dependencies, logEntry.To)
 		}
 	}
-	if s.AfterStore != nil {
-		s.AfterStore()
+	if s.afterStore != nil {
+		s.afterStore()
 	}
 	return nil
 }
 
 // Get service dependencies optionally filtered by a set of service names. If no filters are
 // specified then the response will include all services currently known to the storage.
-func (s *Memory) GetDependencies(srvFilter ...string) ([]tracer.Dependencies, error) {
+func (s *memoryStorage) GetDependencies(srvFilter ...string) ([]tracer.Dependencies, error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -101,7 +115,7 @@ func (s *Memory) GetDependencies(srvFilter ...string) ([]tracer.Dependencies, er
 }
 
 // Fetch a set of time-ordered trace entries with the given trace-id.
-func (s *Memory) GetTrace(traceId string) (tracer.Trace, error) {
+func (s *memoryStorage) GetTrace(traceId string) (tracer.Trace, error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -116,5 +130,8 @@ func (s *Memory) GetTrace(traceId string) (tracer.Trace, error) {
 }
 
 // Shutdown the storage.
-func (s *Memory) Close() {
+func (s *memoryStorage) Close() {
+	s.traces = make(map[string]tracer.Trace)
+	s.services = make(map[string]string)
+	s.serviceDeps = make(map[string]*tracer.Dependencies)
 }

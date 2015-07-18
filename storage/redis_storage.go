@@ -13,19 +13,20 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
+// Redis is a singleton instance of a redis-backed storage service
+var Redis *redisStorage = &redisStorage{
+	redisSrv: redisAdapter.Adapter,
+}
+
 // This storage backend is built on top of Redis. Internally it uses
 // a connection pool to provide thread-safe access.
 type redisStorage struct {
 	redisSrv *redisAdapter.Redis
 }
 
-// Create a new Redis storage.
-func NewRedis(redisSrv *redisAdapter.Redis) *redisStorage {
-	redisSrv.Dial()
-
-	return &redisStorage{
-		redisSrv: redisSrv,
-	}
+// Dial the storage
+func (r *redisStorage) Dial() error {
+	return r.redisSrv.Dial()
 }
 
 // Store a trace entry and set a TTL on it. If the ttl is 0 then the

@@ -20,7 +20,7 @@ type Collector struct {
 // Create a new collector using the supplied storage and allocate a processing queue with depth equal
 // to queueSize. The queueSize parameter should be large enough to handle the rate at which your
 // service emits trace events.
-func NewCollector(storage Storage, queueSize int, tracettl time.Duration) *Collector {
+func NewCollector(storage Storage, queueSize int, tracettl time.Duration) (*Collector, error) {
 	collector := &Collector{
 		tokens:   make(chan struct{}, queueSize),
 		Storage:  storage,
@@ -32,7 +32,7 @@ func NewCollector(storage Storage, queueSize int, tracettl time.Duration) *Colle
 		collector.tokens <- struct{}{}
 	}
 
-	return collector
+	return collector, storage.Dial()
 }
 
 // Append a trace entry. If the collector trace queue is full then the entry will be

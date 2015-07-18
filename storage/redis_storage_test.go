@@ -13,7 +13,6 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/achilleasa/usrv-service-adapters"
 	"github.com/achilleasa/usrv-service-adapters/service/redis"
 	"github.com/achilleasa/usrv-tracer"
 )
@@ -31,15 +30,11 @@ func init() {
 }
 
 func TestRedisStorage(t *testing.T) {
-	redisSrv, err := redis.New(adapters.Config(map[string]string{"endpoint": redisEndpoint}))
-	if err != nil {
-		t.Fatalf("Error creating redis service: %v", err)
-	}
-	storage := NewRedis(redisSrv)
-	defer storage.Close()
+	// Configure adapter
+	redis.Adapter.Config(map[string]string{"endpoint": redisEndpoint})
 
 	// flush db
-	conn, err := redisSrv.GetConnection()
+	conn, err := redis.Adapter.GetConnection()
 	if err != nil {
 		t.Fatalf("Error connecting to redis db: %v", err)
 	}
@@ -47,6 +42,14 @@ func TestRedisStorage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error flushing redis db: %v", err)
 	}
+
+	// Use the redis storage backed by redis adapter
+	storage := Redis
+	err = Redis.Dial()
+	if err != nil {
+		t.Fatalf("Dial failed: %v", err)
+	}
+	defer storage.Close()
 
 	now := time.Now()
 	traceId := "0f3ac0ef-5282-41aa-b7b7-ed45c4100186"

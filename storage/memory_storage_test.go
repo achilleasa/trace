@@ -14,12 +14,15 @@ import (
 )
 
 func TestMemoryStorage(t *testing.T) {
-	storage := NewMemory()
 	afterStoreCalled := false
-	storage.AfterStore = func() {
+	Memory.AfterStore(func() {
 		afterStoreCalled = true
+	})
+	err := Memory.Dial()
+	if err != nil {
+		t.Fatalf("Dial failed: %v", err)
 	}
-	defer storage.Close()
+	defer Memory.Close()
 
 	now := time.Now()
 	traceId := "abcd-1234-1234-1234"
@@ -40,14 +43,14 @@ func TestMemoryStorage(t *testing.T) {
 	// Insert trace
 	ttl := time.Minute
 	for index, entry := range dataSet {
-		err := storage.Store(&entry, ttl)
+		err := Memory.Store(&entry, ttl)
 		if err != nil {
 			t.Fatalf("Error while storing entry #%d: %v", index, err)
 		}
 	}
 
 	// Fetch unknown trace
-	traceLog, err := storage.GetTrace("foobar")
+	traceLog, err := Memory.GetTrace("foobar")
 	if err != nil {
 		t.Fatalf("Error retrieving trace: %v", err)
 	}
@@ -56,7 +59,7 @@ func TestMemoryStorage(t *testing.T) {
 	}
 
 	// Fetch trace by id
-	traceLog, err = storage.GetTrace(traceId)
+	traceLog, err = Memory.GetTrace(traceId)
 	if err != nil {
 		t.Fatalf("Error retrieving trace: %v", err)
 	}
@@ -68,7 +71,7 @@ func TestMemoryStorage(t *testing.T) {
 	}
 
 	// Insert a new entry with different trace id but similar From & To to ensure that we filter out duplicate dependencies
-	err = storage.Store(
+	err = Memory.Store(
 		&tracer.Record{Type: tracer.Request, From: "com.service2", To: "com.service3", Timestamp: now.Add(time.Second * 3), TraceId: "foo-111"},
 		ttl,
 	)
@@ -86,7 +89,7 @@ func TestMemoryStorage(t *testing.T) {
 
 	// Fetch using filters
 	for index, depSpec := range depTests {
-		deps, err := storage.GetDependencies(depSpec.Service)
+		deps, err := Memory.GetDependencies(depSpec.Service)
 		if err != nil {
 			t.Fatalf("Error retrieving dep set #%d: %v", index, err)
 		}
@@ -103,7 +106,7 @@ func TestMemoryStorage(t *testing.T) {
 	}
 
 	// Fetch all
-	deps, err := storage.GetDependencies()
+	deps, err := Memory.GetDependencies()
 	if err != nil {
 		t.Fatalf("Error retrieving dependencies: %v", err)
 	}
