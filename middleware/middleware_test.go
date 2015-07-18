@@ -6,9 +6,9 @@ import (
 
 	"time"
 
+	"github.com/achilleasa/usrv"
 	tracePkg "github.com/achilleasa/usrv-tracer"
 	"github.com/achilleasa/usrv-tracer/storage"
-	"github.com/achilleasa/usrv"
 	"github.com/achilleasa/usrv/usrvtest"
 	"golang.org/x/net/context"
 )
@@ -18,13 +18,17 @@ func TestTracerWithoutTraceId(t *testing.T) {
 
 	processedChan := make(chan struct{})
 
-	storage := storage.NewMemory()
+	storage := storage.Memory
 	defer storage.Close()
-	storage.AfterStore = func() {
+	storage.AfterStore(func() {
 		processedChan <- struct{}{}
+	})
+
+	collector, err := tracePkg.NewCollector(storage, 1000, time.Hour)
+	if err != nil {
+		t.Fatalf("Error creating collector: %v", err)
 	}
 
-	collector := tracePkg.NewCollector(storage, 1000, time.Hour)
 	ep := usrv.Endpoint{
 		Name: "traceTest",
 		Handler: usrv.HandlerFunc(func(ctx context.Context, rw usrv.ResponseWriter, req *usrv.Message) {
@@ -115,13 +119,17 @@ func TestTracerWithExistingTraceId(t *testing.T) {
 
 	processedChan := make(chan struct{})
 
-	storage := storage.NewMemory()
+	storage := storage.Memory
 	defer storage.Close()
-	storage.AfterStore = func() {
+	storage.AfterStore(func() {
 		processedChan <- struct{}{}
+	})
+
+	collector, err := tracePkg.NewCollector(storage, 1000, time.Hour)
+	if err != nil {
+		t.Fatalf("Error creating collector: %v", err)
 	}
 
-	collector := tracePkg.NewCollector(storage, 1000, time.Hour)
 	ep := usrv.Endpoint{
 		Name: "traceTest",
 		Handler: usrv.HandlerFunc(func(ctx context.Context, rw usrv.ResponseWriter, req *usrv.Message) {
@@ -218,13 +226,17 @@ func TestTracerWithError(t *testing.T) {
 
 	processedChan := make(chan struct{})
 
-	storage := storage.NewMemory()
+	storage := storage.Memory
 	defer storage.Close()
-	storage.AfterStore = func() {
+	storage.AfterStore(func() {
 		processedChan <- struct{}{}
+	})
+
+	collector, err := tracePkg.NewCollector(storage, 1000, time.Hour)
+	if err != nil {
+		t.Fatalf("Error creating collector: %v", err)
 	}
 
-	collector := tracePkg.NewCollector(storage, 1000, time.Hour)
 	ep := usrv.Endpoint{
 		Name: "traceTest",
 		Handler: usrv.HandlerFunc(func(ctx context.Context, rw usrv.ResponseWriter, req *usrv.Message) {
