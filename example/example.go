@@ -27,10 +27,14 @@ type AddResponse struct {
 	Sum int
 }
 
+var (
+	add2Endpoint = "com.test.add/2"
+	add4Endpoint = "com.test.add/4"
+)
+
 type Adder struct {
-	add2Client *usrv.Client
-	add4Client *usrv.Client
-	Server     *usrv.Server
+	client *usrv.Client
+	Server *usrv.Server
 }
 
 // add 2 numbers
@@ -49,15 +53,17 @@ func (adder *Adder) add4(ctx context.Context, rawReq interface{}) (interface{}, 
 
 	// Add (a,b) and (c,d) in parallel
 	req1, _ := json.Marshal(Add2Request{A: req.A, B: req.B})
-	req1Chan := adder.add2Client.Request(
+	req1Chan := adder.client.Request(
 		ctx, // Make sure you include the original context so requests can be linked together
 		&usrv.Message{Payload: req1},
+		add2Endpoint,
 	)
 
 	req2, _ := json.Marshal(Add2Request{A: req.C, B: req.D})
-	req2Chan := adder.add2Client.Request(
+	req2Chan := adder.client.Request(
 		ctx, // Make sure you include the original context so requests can be linked together
 		&usrv.Message{Payload: req2},
+		add2Endpoint,
 	)
 
 	// Wait for responses
@@ -79,9 +85,10 @@ func (adder *Adder) add4(ctx context.Context, rawReq interface{}) (interface{}, 
 
 	// Run a final add2 to get the sum
 	req3, _ := json.Marshal(Add2Request{A: res1.Sum, B: res2.Sum})
-	req3Chan := adder.add2Client.Request(
+	req3Chan := adder.client.Request(
 		ctx, // Make sure you include the original context so requests can be linked together
 		&usrv.Message{Payload: req3},
+		add2Endpoint,
 	)
 
 	srvRes := <-req3Chan
@@ -92,9 +99,10 @@ func (adder *Adder) add4(ctx context.Context, rawReq interface{}) (interface{}, 
 
 func (adder *Adder) Add4(a, b, c, d int) (int, string) {
 	req, _ := json.Marshal(Add4Request{a, b, c, d})
-	reqChan := adder.add4Client.Request(
+	reqChan := adder.client.Request(
 		context.WithValue(context.Background(), usrv.CtxCurEndpoint, "com.test.api"),
 		&usrv.Message{Payload: req},
+		add4Endpoint,
 	)
 
 	srvRes := <-reqChan
@@ -124,19 +132,18 @@ func NewAdder(transp usrv.Transport, collector *tracer.Collector) *Adder {
 	}
 
 	adder := &Adder{
-		add2Client: usrv.NewClient(transp, "com.test.add/2"),
-		add4Client: usrv.NewClient(transp, "com.test.add/4"),
-		Server:     server,
+		client: usrv.NewClient(transp),
+		Server: server,
 	}
 
 	// Register endpoints and add the tracer middleware
 	server.Handle(
-		"com.test.add/2",
+		add2Endpoint,
 		usrv.PipelineHandler{add2Dec, adder.add2, json.Marshal},
 		middleware.Tracer(collector),
 	)
 	server.Handle(
-		"com.test.add/4",
+		add4Endpoint,
 		usrv.PipelineHandler{add4Dec, adder.add4, json.Marshal},
 		middleware.Tracer(collector),
 	)
