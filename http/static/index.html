@@ -352,7 +352,9 @@
 			var startTs = Date.parse(traceLog[0].ts);
 			var rtt = Math.abs(endTs - startTs);
 
-			var dg = 'Title: Roundtrip time: ' + rtt + 'ms\n';
+			var dg = rtt == 0
+				? 'Title: Roundtrip time: < 1ms\n'
+				: 'Title: Roundtrip time: ' + rtt + 'ms\n';
 			var reqTsByCorrId = {};
 			traceLog.forEach(function (entry) {
 				var arrow;
@@ -364,7 +366,10 @@
 					// If we can match correlation ids calculate call RTT
 					label = '';
 					if (typeof reqTsByCorrId[entry.correlation_id] !== 'undefined') {
-						label = Math.abs(Date.parse(entry.ts) - reqTsByCorrId[entry.correlation_id]) + 'ms\\n';
+						var diff = Math.abs(Date.parse(entry.ts) - reqTsByCorrId[entry.correlation_id]);
+						label = diff == 0
+							? (entry.duration / 1000) + 'μs\\n'
+							: Math.abs(Date.parse(entry.ts) - reqTsByCorrId[entry.correlation_id]) + 'ms\\n';
 					}
 
 					if (typeof entry.error != 'undefined') {
